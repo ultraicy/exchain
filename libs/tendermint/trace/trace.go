@@ -20,11 +20,10 @@ const (
 	Iavl        = "Iavl"
 	DeliverTxs  = "DeliverTxs"
 
-
-	Abci       = "abci"
-	SaveResp   = "saveResp"
-	Persist    = "persist"
-	SaveState  = "saveState"
+	Abci      = "abci"
+	SaveResp  = "saveResp"
+	Persist   = "persist"
+	SaveState = "saveState"
 
 	ApplyBlock = "ApplyBlock"
 	Consensus  = "Consensus"
@@ -52,7 +51,7 @@ func GetElapsedInfo() IElapsedTimeInfos {
 func NewTracer(name string) *Tracer {
 	t := &Tracer{
 		startTime: time.Now().UnixNano(),
-		name: name,
+		name:      name,
 	}
 	return t
 }

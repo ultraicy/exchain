@@ -6,13 +6,15 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
 func init() {
 	dbCreator := func(name string, dir string) (ethdb.KeyValueStore, error) {
-		fmt.Println("badger:dbCreator")
-		return NewWrapBadgerDB(dir), nil
+		file := filepath.Join(dir, name+".db")
+		fmt.Println("badger:dbCreator", file)
+		return NewWrapBadgerDB(file), nil
 	}
 	registerDBCreator(BadgerDBBackend, dbCreator, false)
 }
@@ -151,7 +153,6 @@ func (db *BadgerDB) Has(key []byte) (exists bool, err error) {
 
 // Get returns the given key
 func (db *BadgerDB) Get(key []byte) (data []byte, err error) {
-	fmt.Println("145-----")
 	db.lock.RLock()
 	defer db.lock.RUnlock()
 	err = db.db.View(func(txn *badger.Txn) error {

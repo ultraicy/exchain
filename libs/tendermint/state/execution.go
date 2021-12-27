@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/trie"
 	"time"
 
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
@@ -152,7 +153,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	defer func() {
 		trace.GetElapsedInfo().AddInfo(trace.Height, fmt.Sprintf("%d", block.Height))
 		trace.GetElapsedInfo().AddInfo(trace.Tx, fmt.Sprintf("%d", len(block.Data.Txs)))
-		trace.GetElapsedInfo().AddInfo(trace.RunTx, trc.Format())
+		cnt, ts := trie.GetLog()
+		_, tsWrite := trie.GetWrite()
+		cntStorage := log.GetObjLog()
+
+		ff := fmt.Sprintf("<cntTrie:%d>, <tsTrie:%d>, <cntWrite:%d>, <tsWrite:%d>, ",
+			cnt, ts.Milliseconds(), cntStorage, tsWrite.Milliseconds()) + trc.Format()
+		trace.GetElapsedInfo().AddInfo(trace.RunTx, ff)
+		trie.CleanLog()
+		trie.CleanWrite()
+		log.CleanObj()
 		trace.GetElapsedInfo().SetElapsedTime(trc.GetElapsedTime())
 
 		now := time.Now().UnixNano()

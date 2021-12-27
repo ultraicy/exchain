@@ -21,7 +21,8 @@ var (
 	initOnce sync.Once
 
 	TrieDirtyDisabled      = false
-	TrieCacheSize     uint = 1554 // MB
+	TrieCacheSize     uint = 0 // MB
+	//TrieCacheSize     uint = 1554 // MB
 )
 
 func init() {
@@ -40,7 +41,7 @@ const (
 	EvmDataDir = "data"
 	EvmSpace   = "evm"
 
-	FlagDBBackend = "db_backend"
+	FlagDBBackend = "mpt_db_backend"
 
 	FlagTrieDirtyDisabled = "trie-dirty-disabled"
 	FlagTrieCacheSize     = "trie-cache-size"
@@ -54,7 +55,7 @@ func InstanceOfEvmStore() ethstate.Database {
 		backend := viper.GetString(FlagDBBackend)
 
 		kvstore, e := CreateKvDB(EvmSpace, BackendType(backend), path)
-		fmt.Println("backend", backend, reflect.TypeOf(kvstore))
+		fmt.Println("backend", backend, reflect.TypeOf(kvstore), path)
 		if e != nil {
 			panic("fail to open database: " + e.Error())
 		}

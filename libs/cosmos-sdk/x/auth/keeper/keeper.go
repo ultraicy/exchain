@@ -17,6 +17,7 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/x/params/subspace"
 	"github.com/okex/exchain/libs/tendermint/crypto"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
+	"time"
 )
 
 // AccountKeeper encodes/decodes accounts using the go-amino (binary)
@@ -35,8 +36,8 @@ type AccountKeeper struct {
 
 	observers []ObserverI
 
-	trie ethstate.Trie
-	db ethstate.Database
+	trie   ethstate.Trie
+	db     ethstate.Database
 	triegc *prque.Prque
 
 	accCommitStore *sdk.AccCommitStore
@@ -54,7 +55,7 @@ func NewAccountKeeper(
 		cdc:           cdc,
 		paramSubspace: paramstore.WithKeyTable(types.ParamKeyTable()),
 
-		db: types.InstanceOfEvmStore(),
+		db:     types.InstanceOfEvmStore(),
 		triegc: prque.New(nil),
 
 		accCommitStore: sdk.NewAccCommitStore(),
@@ -121,9 +122,9 @@ func (ak AccountKeeper) decodeAccount(bz []byte) (acc exported.Account) {
 }
 
 var (
-	KeyPrefixLatestHeight = []byte{0x01}
-	KeyPrefixRootMptHash  = []byte{0x02}
-	KeyPrefixLatestStoredHeight  = []byte{0x03}
+	KeyPrefixLatestHeight       = []byte{0x01}
+	KeyPrefixRootMptHash        = []byte{0x02}
+	KeyPrefixLatestStoredHeight = []byte{0x03}
 )
 
 // GetLatestBlockHeight get latest mpt storage height
@@ -188,7 +189,9 @@ func (ak *AccountKeeper) OpenTrie() {
 }
 
 func (ak *AccountKeeper) Commit(ctx sdk.Context) {
+	ts := time.Now()
 	ak.accCommitStore.Write() // cs.write()
+	fmt.Println("ffff-1", time.Now().Sub(ts).Milliseconds())
 
 	// The onleaf func is called _serially_, so we can reuse the same account
 	// for unmarshalling every time.
@@ -203,12 +206,13 @@ func (ak *AccountKeeper) Commit(ctx sdk.Context) {
 		}
 		return nil
 	})
-
+	fmt.Println("ffff-2", time.Now().Sub(ts).Milliseconds())
 	latestHeight := uint64(ctx.BlockHeight())
 	ak.SetRootMptHash(latestHeight, root)
 	ak.SetLatestBlockHeight(latestHeight)
-
+	fmt.Println("ffff-3", time.Now().Sub(ts).Milliseconds())
 	ak.PushData2Database(ctx, root)
+	fmt.Println("ffff-4", time.Now().Sub(ts).Milliseconds())
 }
 
 func (ak *AccountKeeper) OnStop() error {

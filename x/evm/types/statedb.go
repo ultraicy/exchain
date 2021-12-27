@@ -14,6 +14,7 @@ import (
 	types2 "github.com/okex/exchain/app/types"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
+	tmLog "github.com/okex/exchain/libs/tendermint/libs/log"
 	"github.com/okex/exchain/x/common/analyzer"
 	"github.com/pkg/errors"
 	"math/big"
@@ -53,7 +54,7 @@ type CacheCode struct {
 // TODO: This implementation is subject to change in regards to its statefull
 // manner. In otherwords, how this relates to the keeper in this module.
 type CommitStateDB struct {
-	db   ethstate.Database
+	db ethstate.Database
 	//trie ethstate.Trie // only storage addr -> storageMptRoot in this mpt tree
 
 	// TODO: We need to store the context as part of the structure itself opposed
@@ -404,12 +405,11 @@ func (csdb *CommitStateDB) GetCommittedState(addr ethcmn.Address, hash ethcmn.Ha
 
 // GetState retrieves a value from the given account's storage store.
 func (csdb *CommitStateDB) GetState(addr ethcmn.Address, hash ethcmn.Hash) ethcmn.Hash {
-	if !csdb.ctx.IsCheckTx() {
-		funcName := analyzer.RunFuncName()
-		analyzer.StartTxLog(funcName)
-		defer analyzer.StopTxLog(funcName)
-	}
-
+	//if !csdb.ctx.IsCheckTx() {
+	//	funcName := analyzer.RunFuncName()
+	//	analyzer.StartTxLog(funcName)
+	//	defer analyzer.StopTxLog(funcName)
+	//}
 	stateObject := csdb.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.GetState(csdb.db, hash)
@@ -877,6 +877,7 @@ func (csdb *CommitStateDB) IntermediateRoot(deleteEmptyObjects bool) ethcmn.Hash
 	// to pull useful data from disk.
 	for addr := range csdb.stateObjectsPending {
 		if obj := csdb.stateObjects[addr]; !obj.deleted {
+			tmLog.AddObj(len(obj.pendingStorage))
 			obj.updateRoot(csdb.db)
 		}
 	}

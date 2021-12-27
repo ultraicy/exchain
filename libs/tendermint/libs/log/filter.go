@@ -1,6 +1,9 @@
 package log
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type level byte
 
@@ -192,4 +195,39 @@ func AllowErrorWith(key interface{}, value interface{}) Option {
 // AllowNoneWith allows no leveled log events to pass for a specific key value pair.
 func AllowNoneWith(key interface{}, value interface{}) Option {
 	return func(l *filter) { l.allowedKeyvals[keyval{key, value}] = 0 }
+}
+
+var (
+	stateCnt int
+	stateTx  time.Duration
+)
+
+func CleanState() {
+	stateCnt = 0
+	stateTx = time.Duration(0)
+}
+
+func AddState(ts time.Duration) {
+	stateCnt++
+	stateTx += ts
+}
+
+func GetStateLog() (int, time.Duration) {
+	return stateCnt, stateTx
+}
+
+var (
+	objCnt int
+)
+
+func CleanObj() {
+	objCnt = 0
+}
+
+func AddObj(data int) {
+	objCnt += data
+}
+
+func GetObjLog() int {
+	return objCnt
 }

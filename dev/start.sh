@@ -21,18 +21,22 @@ killbyname() {
 
 
 run() {
-    LOG_LEVEL=main:info,iavl:info,*:error
+    LOG_LEVEL=main:info,state:info,iavl:info,*:error
 
     exchaind start --pruning=nothing --rpc.unsafe \
       --local-rpc-port 26657 \
       --log_level $LOG_LEVEL \
       --consensus.timeout_commit 600ms \
       --iavl-enable-async-commit \
+      --iavl-cache-size 0 \
       --iavl-commit-interval-height 2 \
       --iavl-output-modules evm=1,acc=0 \
       --trace --home $HOME_SERVER --chain-id $CHAINID \
       --elapsed DeliverTxs=1 \
-      --rest.laddr "tcp://localhost:8545" > oec.log 2>&1 &
+      --mpt_db_backend=badgerdb \
+      --trie-cache-size=0 \
+      --trie-dirty-disabled=true \
+      --rest.laddr "tcp://0.0.0.0:8545" > oec.log 2>&1 &
 
 # --iavl-commit-interval-height \
 # --iavl-enable-async-commit \
@@ -60,7 +64,7 @@ set -x # activate debugging
 rm -rf ~/.exchain*
 rm -rf $HOME_SERVER
 
-(cd .. && make install)
+(cd .. && make install WITH_ROCKSDB=true)
 
 # Set up config for CLI
 exchaincli config chain-id $CHAINID
@@ -86,10 +90,16 @@ cat $HOME_SERVER/config/genesis.json | jq '.app_state["crisis"]["constant_fee"][
 cat $HOME_SERVER/config/genesis.json | jq '.app_state["gov"]["deposit_params"]["min_deposit"][0]["denom"]="okt"' > $HOME_SERVER/config/tmp_genesis.json && mv $HOME_SERVER/config/tmp_genesis.json $HOME_SERVER/config/genesis.json
 cat $HOME_SERVER/config/genesis.json | jq '.app_state["mint"]["params"]["mint_denom"]="okt"' > $HOME_SERVER/config/tmp_genesis.json && mv $HOME_SERVER/config/tmp_genesis.json $HOME_SERVER/config/genesis.json
 
-# Enable EVM
-sed -i "" 's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
-sed -i "" 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
 
+
+# Enable EVM
+sed -i  's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
+sed -i  's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
+
+
+sed -i  's/create_empty_blocks = true/create_empty_blocks = false/' $HOME_SERVER/config/config.toml
+sed -i  's/size = 2000/size = 200000/' $HOME_SERVER/config/config.toml
+sed -i  's/max_tx_num_per_block = 300/max_tx_num_per_block = 2000/' $HOME_SERVER/config/config.toml
 # Allocate genesis accounts (cosmos formatted addresses)
 exchaind add-genesis-account $(exchaincli keys show $KEY    -a) 100000000okt --home $HOME_SERVER
 exchaind add-genesis-account $(exchaincli keys show admin16 -a) 900000000okt --home $HOME_SERVER

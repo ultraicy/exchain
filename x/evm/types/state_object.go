@@ -11,8 +11,10 @@ import (
 	"github.com/okex/exchain/app/types"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	authexported "github.com/okex/exchain/libs/cosmos-sdk/x/auth/exported"
+	"github.com/okex/exchain/libs/tendermint/libs/log"
 	"io"
 	"math/big"
+	"time"
 )
 
 var (
@@ -50,10 +52,10 @@ type StateObject interface {
 // Account values can be accessed and modified through the object.
 // Finally, call CommitTrie to write the modified storage trie into a database.
 type stateObject struct {
-	address   ethcmn.Address
-	addrHash  ethcmn.Hash
-	stateDB   *CommitStateDB
-	account   *types.EthAccount
+	address  ethcmn.Address
+	addrHash ethcmn.Hash
+	stateDB  *CommitStateDB
+	account  *types.EthAccount
 
 	// DB error.
 	// State objects are used by the consensus core and VM which are
@@ -340,11 +342,12 @@ func (so *stateObject) GetCommittedState(db ethstate.Database, key ethcmn.Hash) 
 		err error
 	)
 
+	ts := time.Now()
 	if enc, err = so.getTrie(db).TryGet(key.Bytes()); err != nil {
 		so.setError(err)
 		return ethcmn.Hash{}
 	}
-
+	log.AddState(time.Now().Sub(ts))
 	var value ethcmn.Hash
 	if len(enc) > 0 {
 		_, content, _, err := rlp.Split(enc)

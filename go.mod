@@ -150,6 +150,7 @@ require (
 
 replace (
 	github.com/buger/jsonparser => github.com/buger/jsonparser v1.0.0 // imported by nacos-go-sdk, upgraded to v1.0.0 in case of a known vulnerable bug
+	github.com/ethereum/go-ethereum => github.com/516108736/go-ethereum v1.10.9-0.20211229102959-53f770fde17b
 	github.com/keybase/go-keychain => github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4
 	github.com/tendermint/tm-db => github.com/okex/tm-db v0.5.2-exchain2
 )

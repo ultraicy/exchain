@@ -273,6 +273,7 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 
 	gInfo, result, _, err = app.runTx(runTxModeDeliver, req.Tx, tx, LatestSimulateTxHeight)
 	if err != nil {
+		fmt.Println("runTxModeDeliver err", err)
 		return sdkerrors.ResponseDeliverTx(err, gInfo.GasWanted, gInfo.GasUsed, app.trace)
 	}
 
@@ -297,7 +298,7 @@ func (app *BaseApp) Commit() (res abci.ResponseCommit) {
 
 	app.checkState.accms.Clean()
 	app.deliverState.accms.Write() //c3s.write()
-	app.accCacheCMS.Write() // c2s.write()
+	app.accCacheCMS.Write()        // c2s.write()
 	if app.AccCommitHandler != nil {
 		app.AccCommitHandler(app.deliverState.ctx) // call c1s.write()
 	}
@@ -542,7 +543,6 @@ func handleQueryCustom(app *BaseApp, path []string, req abci.RequestQuery) abci.
 	ctx := sdk.NewContext(
 		cacheMS, app.checkState.ctx.BlockHeader(), true, app.logger,
 	).WithMinGasPrices(app.minGasPrices).WithAccCacheStore(app.accCacheCMS.CreateCacheStore())
-
 
 	// Passes the rest of the path as an argument to the querier.
 	//
