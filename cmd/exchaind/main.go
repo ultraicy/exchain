@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/okex/exchain/app/logevents"
 	"io"
+
+	"github.com/okex/exchain/app/logevents"
 
 	"github.com/okex/exchain/app/rpc"
 	evmtypes "github.com/okex/exchain/x/evm/types"
@@ -63,7 +64,6 @@ func main() {
 
 	ctx := server.NewDefaultContext()
 
-
 	rootCmd := &cobra.Command{
 		Use:               "exchaind",
 		Short:             "ExChain App Daemon (server)",
@@ -93,13 +93,18 @@ func main() {
 		subscribeCmd(cdc),
 	)
 
-
 	subFunc := func(logger log.Logger) log.Subscriber {
 		return logevents.NewProvider(logger)
 	}
 	// Tendermint node base commands
 	server.AddCommands(ctx, cdc, rootCmd, newApp, closeApp, exportAppStateAndTMValidators,
 		registerRoutes, client.RegisterAppFlag, app.PreRun, subFunc)
+
+	rootCmd.PersistentFlags().StringSlice("test.monitored_validators", []string{}, "the list of validators, used for monitoring to test")
+	rootCmd.PersistentFlags().Float64("test.init_totoal_fee", 0, "")
+	rootCmd.PersistentFlags().Float64("test.init_control_fee", 0, "")
+	rootCmd.PersistentFlags().Float64("test.init_other_fee", 0, "")
+	rootCmd.PersistentFlags().Float64("test.init_community_fee", 0, "")
 
 	// prepare and add flags
 	executor := cli.PrepareBaseCmd(rootCmd, "OKEXCHAIN", app.DefaultNodeHome)
