@@ -298,6 +298,7 @@ const (
 	StoreTypeDB
 	StoreTypeIAVL
 	StoreTypeTransient
+	StoreTypeMPT
 )
 
 //----------------------------------------
