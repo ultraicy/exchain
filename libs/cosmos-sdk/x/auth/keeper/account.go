@@ -1,8 +1,6 @@
 package keeper
 
 import (
-	"fmt"
-
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth/exported"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
@@ -83,11 +81,8 @@ func (ak AccountKeeper) IterateAccounts(ctx sdk.Context, cb func(account exporte
 	iterator := sdk.KVStorePrefixIterator(store, types.AddressStoreKeyPrefix)
 
 	defer iterator.Close()
-	i := 0
 	for ; iterator.Valid(); iterator.Next() {
 		account := ak.decodeAccount(iterator.Value())
-		fmt.Println(i)
-		i++
 		if cb(account) {
 			break
 		}

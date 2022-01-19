@@ -1,14 +1,15 @@
 package mpt
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/ethereum/go-ethereum/common/prque"
 	ethstate "github.com/ethereum/go-ethereum/core/state"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/cachekv"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/tracekv"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
+	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 )
 
@@ -37,7 +38,9 @@ func NewMptStore() *MptStore {
 	triegc := prque.New(nil)
 
 	latestHeight := GetLatestBlockHeight(db)
+	fmt.Println("latest Block height", latestHeight)
 	latestRootHash := GetRootMptHash(db, latestHeight)
+	fmt.Println("latest MPT hash", latestRootHash)
 	tr, err := db.OpenTrie(latestRootHash)
 	if err != nil {
 		panic("Fail to open root mpt: " + err.Error())
@@ -54,21 +57,21 @@ func NewMptStore() *MptStore {
 /*
 *  implement KVStore
  */
-func (ms MptStore) GetStoreType() types.StoreType {
+func (ms *MptStore) GetStoreType() types.StoreType {
 	return StoreTypeMPT
 }
 
-func (ms MptStore) CacheWrap() types.CacheWrap {
+func (ms *MptStore) CacheWrap() types.CacheWrap {
 	//TODO implement me
 	return cachekv.NewStore(ms)
 }
 
-func (ms MptStore) CacheWrapWithTrace(w io.Writer, tc types.TraceContext) types.CacheWrap {
+func (ms *MptStore) CacheWrapWithTrace(w io.Writer, tc types.TraceContext) types.CacheWrap {
 	//TODO implement me
 	return cachekv.NewStore(tracekv.NewStore(ms, w, tc))
 }
 
-func (ms MptStore) Get(key []byte) []byte {
+func (ms *MptStore) Get(key []byte) []byte {
 	value, err := ms.trie.TryGet(key)
 	if err != nil {
 		return nil
@@ -76,11 +79,11 @@ func (ms MptStore) Get(key []byte) []byte {
 	return value
 }
 
-func (ms MptStore) Has(key []byte) bool {
+func (ms *MptStore) Has(key []byte) bool {
 	return ms.Get(key) != nil
 }
 
-func (ms MptStore) Set(key, value []byte) {
+func (ms *MptStore) Set(key, value []byte) {
 	types.AssertValidValue(value)
 
 	err := ms.trie.TryUpdate(key, value)
@@ -90,70 +93,82 @@ func (ms MptStore) Set(key, value []byte) {
 	return
 }
 
-func (ms MptStore) Delete(key []byte) {
+func (ms *MptStore) Delete(key []byte) {
 	err := ms.trie.TryDelete(key)
 	if err != nil {
 		return
 	}
 }
 
-func (ms MptStore) Iterator(start, end []byte) types.Iterator {
+func (ms *MptStore) Iterator(start, end []byte) types.Iterator {
 	return newMptIterator(ms.trie, start, end)
 }
 
-func (ms MptStore) ReverseIterator(start, end []byte) types.Iterator {
+func (ms *MptStore) ReverseIterator(start, end []byte) types.Iterator {
 	return newMptIterator(ms.trie, start, end)
 }
 
 /*
 *  implement CommitStore, CommitKVStore
  */
-func (ms MptStore) Commit() types.CommitID {
-	// todo:
-	// commitID := store.Commit()
-	//  ||
-	// func (st *Store) Commit() types.CommitID
+func (ms *MptStore) Commit() types.CommitID {
+	ms.version++
+	root, err := ms.trie.Commit(nil)
+	if err != nil {
+		panic("fail to commit trie data: " + err.Error())
+	}
+	err = ms.db.TrieDB().Commit(root, true, nil)
+	if err != nil {
+		panic("fail to commit trieDB data: " + err.Error())
+	}
+
+	height := sdk.Uint64ToBigEndian(uint64(ms.version))
+	ms.db.TrieDB().DiskDB().Put(append(KeyPrefixRootMptHash, height...), root.Bytes())
+	fmt.Println("set root hash", root.String())
+	ms.db.TrieDB().DiskDB().Put(KeyPrefixLatestHeight, height)
+	fmt.Println("set Block height", ms.version)
+
 	return types.CommitID{
 		Version: ms.version,
-		Hash:    ethtypes.EmptyRootHash.Bytes(),
+		Hash:    root.Bytes(),
 	}
 }
 
-func (ms MptStore) LastCommitID() types.CommitID {
+func (ms *MptStore) LastCommitID() types.CommitID {
 	return types.CommitID{
 		Version: ms.version,
 		Hash:    ms.trie.Hash().Bytes(),
 	}
 }
 
-func (ms MptStore) SetPruning(options types.PruningOptions) {
+func (ms *MptStore) SetPruning(options types.PruningOptions) {
 	panic("cannot set pruning options on an initialized MPT store")
 }
 
-func (ms MptStore) GetDBWriteCount() int {
+func (ms *MptStore) GetDBWriteCount() int {
 	return 0
 }
 
-func (ms MptStore) GetDBReadCount() int {
+func (ms *MptStore) GetDBReadCount() int {
 	return 0
 }
 
-func (ms MptStore) GetNodeReadCount() int {
+func (ms *MptStore) GetNodeReadCount() int {
 	return 0
 }
 
-func (ms MptStore) ResetCount() {
+func (ms *MptStore) ResetCount() {
 	return
 }
 
-func (ms MptStore) GetDBReadTime() int {
+func (ms *MptStore) GetDBReadTime() int {
 	return 0
 }
 
 /*
 *  implement Queryable
  */
-func (ms MptStore) Query(query abci.RequestQuery) abci.ResponseQuery {
+func (ms *MptStore) Query(query abci.RequestQuery) abci.ResponseQuery {
 	//TODO implement me
 	panic("implement me")
 }
