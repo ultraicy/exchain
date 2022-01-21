@@ -30,7 +30,7 @@ const (
 
 var (
 	TrieDirtyDisabled      = false
-	TrieCacheSize     uint = 1554 // MB
+	TrieCacheSize     uint = 4096 // MB
 )
 
 func InstanceOfEvmStore() ethstate.Database {

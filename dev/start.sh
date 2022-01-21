@@ -35,6 +35,8 @@ run() {
       --elapsed Round=1,CommitRound=1,Produce=1 \
       --rest.laddr "tcp://localhost:8545" > oec.log 2>&1 &
 
+exchaind unsafe-reset-all --home /data/evmdata
+exchaind start --home /data/evmdata --chain-id exchainevm-8 --log_level main:info,state:info --rpc.unsafe --mempool.max_tx_num_per_block 1500 --iavl-enable-async-commit --iavl-commit-interval-height 10 --elapsed Round=1,CommitRound=1,Produce=1 --rest.laddr tcp://0.0.0.0:26659 --rpc.laddr tcp://0.0.0.0:26657
 # --iavl-commit-interval-height \
 # --iavl-enable-async-commit \
 #      --iavl-cache-size int                              Max size of iavl cache (default 1000000)
