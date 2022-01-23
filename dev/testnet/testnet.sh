@@ -17,8 +17,11 @@ set -x # activate debugging
 
 source oec.profile
 WRAPPEDTX=false
+MULTIVERSION=false
+# versions use the git branch default is dev 
+VERSIONS=("dev", "dev", "dev", "dev")
 PRERUN=false
-while getopts "isn:b:p:c:Smxwk:" opt; do
+while getopts "isn:b:p:c:Smxwk:M" opt; do
   case $opt in
   i)
     echo "OKCHAIN_INIT"
@@ -64,11 +67,36 @@ while getopts "isn:b:p:c:Smxwk:" opt; do
     echo "HARDCODED_MNEMONIC"
     HARDCODED_MNEMONIC=true
     ;;
+  M)
+    echo "Multi version testnet"
+    MULTIVERSION=true
+    ;;
   \?)
     echo "Invalid option: -$OPTARG"
     ;;
   esac
 done
+
+# extract p2p node key with the specificed file path 
+extract_node_key(){
+    exchaincli=$1
+    file=$2
+    if [[ -z $file ]]; then 
+        echo "node key file should not empty!"
+        exit
+    fi 
+    ${exchaincli} extract-node-key ${file} | sed -r 's/hex: //; s/\n//g'
+}
+
+# build any version of exchain to any dest 
+build() {
+    branch=$1
+    index=$2
+    repo=cache/node${index}/repo
+    mkdir -p cache/node${index}/binary
+    git clone https://github.com/okex/exchain.git -b $branch $repo
+    cd $repo && make build && mv build/* ../binary
+}
 
 echorun() {
   echo "------------------------------------------------------------------------------------------------"
@@ -99,12 +127,12 @@ init() {
     --base-port ${BASE_PORT} \
     --keyring-backend test \
     --mnemonic=${HARDCODED_MNEMONIC}
-}
 
-# extract p2p node key with the specificed work home path 
-# @usage VALUE=`extract_node_key $1`
-extract_node_key(){
-    exchaind extract-node-key hex --home $1 | sed -r 's/Node Public Key: //; s/\n//g'
+  if $MULTIVERSION; then 
+    echo "=================================================="
+    echo "===== Build multi version exchain...===="
+    build ${#VERSIONS[$index]} $index
+  fi     
 }
 
 run() {
@@ -135,7 +163,13 @@ run() {
 
   LOG_LEVEL=main:debug,*:error,consensus:error,state:info,ante:info,txdecoder:info
 
-  echorun nohup exchaind start \
+  binary=exchaind
+
+  if $MULTIVERSION; then 
+    binary=cache/node${index}/binary/exchaind
+  fi 
+
+  echorun nohup ${binary} start \
     --home cache/node${index}/exchaind \
     --p2p.seed_mode=$seed_mode \
     --p2p.allow_duplicate_ip \
@@ -186,11 +220,18 @@ function start() {
   echo "start node done"
 }
 
+
 if [ -z ${IP} ]; then
   IP="127.0.0.1"
 fi
 
 if [ ! -z "${OKCHAIN_INIT}" ]; then
+  if $MULTIVERSION; then
+    if [ ${#VERSIONS[@]} -lt ${NUM_NODE} ]; then 
+      echo "VERSIONS array is not enough for this test "
+      exit 1
+    fi 
+  fi 
   init ${NUM_NODE}
 fi
 
