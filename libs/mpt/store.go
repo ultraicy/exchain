@@ -1,7 +1,8 @@
 package mpt
 
 import (
-	"fmt"
+	"github.com/okex/exchain/libs/iavl"
+	tmlog "github.com/okex/exchain/libs/tendermint/libs/log"
 	"io"
 
 	"github.com/ethereum/go-ethereum/common/prque"
@@ -29,18 +30,41 @@ type MptStore struct {
 	trie   ethstate.Trie
 	db     ethstate.Database
 	triegc *prque.Prque
+	logger tmlog.Logger
 
 	version int64
 }
 
-func NewMptStore() *MptStore {
-	db := InstanceOfEvmStore()
+func (ms *MptStore) GetFlatKVReadTime() int {
+	return 0
+}
+
+func (ms *MptStore) GetFlatKVWriteTime() int {
+	return 0
+}
+
+func (ms *MptStore) GetFlatKVReadCount() int {
+	return 0
+}
+
+func (ms *MptStore) GetFlatKVWriteCount() int {
+	return 0
+}
+
+func NewMptStore(logger tmlog.Logger) *MptStore {
+	db := InstanceOfAccStore()
 	triegc := prque.New(nil)
 
 	latestHeight := GetLatestBlockHeight(db)
-	fmt.Println("latest Block height", latestHeight)
+	if logger != nil {
+		logger.Info("latest stored Block", "height", latestHeight)
+	}
+
 	latestRootHash := GetRootMptHash(db, latestHeight)
-	fmt.Println("latest MPT hash", latestRootHash)
+	if logger != nil {
+		logger.Info("latest mpt hash", "hash", latestRootHash)
+	}
+
 	tr, err := db.OpenTrie(latestRootHash)
 	if err != nil {
 		panic("Fail to open root mpt: " + err.Error())
@@ -50,6 +74,7 @@ func NewMptStore() *MptStore {
 		tr,
 		db,
 		triegc,
+		logger,
 		int64(latestHeight),
 	}
 }
@@ -111,7 +136,7 @@ func (ms *MptStore) ReverseIterator(start, end []byte) types.Iterator {
 /*
 *  implement CommitStore, CommitKVStore
  */
-func (ms *MptStore) Commit() types.CommitID {
+func (ms *MptStore) Commit(delta *iavl.TreeDelta, bytes []byte) (types.CommitID, iavl.TreeDelta, []byte) {
 	ms.version++
 	root, err := ms.trie.Commit(nil)
 	if err != nil {
@@ -124,14 +149,16 @@ func (ms *MptStore) Commit() types.CommitID {
 
 	height := sdk.Uint64ToBigEndian(uint64(ms.version))
 	ms.db.TrieDB().DiskDB().Put(append(KeyPrefixRootMptHash, height...), root.Bytes())
-	fmt.Println("set root hash", root.String())
 	ms.db.TrieDB().DiskDB().Put(KeyPrefixLatestHeight, height)
-	fmt.Println("set Block height", ms.version)
+
+	if ms.logger != nil {
+		ms.logger.Info("mpt commit", "height", ms.version, "hash", root.String())
+	}
 
 	return types.CommitID{
 		Version: ms.version,
 		Hash:    root.Bytes(),
-	}
+	}, iavl.TreeDelta{}, nil
 }
 
 func (ms *MptStore) LastCommitID() types.CommitID {

@@ -294,7 +294,11 @@ func (app *BaseApp) MountStores(keys ...sdk.StoreKey) {
 		switch key.(type) {
 		case *sdk.KVStoreKey:
 			if !app.fauxMerkleMode {
-				app.MountStore(key, sdk.StoreTypeIAVL)
+				if key.Name() == "acc" {
+					app.MountStore(key, sdk.StoreTypeMPT)
+				} else {
+					app.MountStore(key, sdk.StoreTypeIAVL)
+				}
 			} else {
 				// StoreTypeDB doesn't do anything upon commit, and it doesn't
 				// retain history, but it's useful for faster simulation.

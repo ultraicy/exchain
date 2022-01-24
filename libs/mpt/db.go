@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -19,8 +20,8 @@ import (
 )
 
 const (
-	EvmDataDir = "data"
-	EvmSpace   = "evm_mpt"
+	AccDataDir = "data"
+	AccSpace   = "acc"
 
 	FlagDBBackend = "db_backend"
 
@@ -29,31 +30,36 @@ const (
 )
 
 var (
+	gAccMptDatabase ethstate.Database = nil
+	initOnce sync.Once
+
 	TrieDirtyDisabled      = false
 	TrieCacheSize     uint = 4096 // MB
 )
 
-func InstanceOfEvmStore() ethstate.Database {
-	homeDir := viper.GetString(flags.FlagHome)
-	path := filepath.Join(homeDir, EvmDataDir)
+func InstanceOfAccStore() ethstate.Database {
+	initOnce.Do(func() {
+		homeDir := viper.GetString(flags.FlagHome)
+		path := filepath.Join(homeDir, AccDataDir)
 
-	backend := viper.GetString(FlagDBBackend)
-	if backend == "" {
-		backend = string(dbm.GoLevelDBBackend)
-	}
+		backend := viper.GetString(FlagDBBackend)
+		if backend == "" {
+			backend = string(dbm.GoLevelDBBackend)
+		}
 
-	kvstore, e := CreateKvDB(EvmSpace, BackendType(backend), path)
-	if e != nil {
-		panic("fail to open database: " + e.Error())
-	}
-	db := rawdb.NewDatabase(kvstore)
-	gEvmMptDatabase := ethstate.NewDatabaseWithConfig(db, &trie.Config{
-		Cache:     int(TrieCacheSize),
-		Journal:   "",
-		Preimages: true,
+		kvstore, e := CreateKvDB(AccSpace, BackendType(backend), path)
+		if e != nil {
+			panic("fail to open database: " + e.Error())
+		}
+		db := rawdb.NewDatabase(kvstore)
+		gAccMptDatabase = ethstate.NewDatabaseWithConfig(db, &trie.Config{
+			Cache:     int(TrieCacheSize),
+			Journal:   "",
+			Preimages: true,
+		})
 	})
 
-	return gEvmMptDatabase
+	return gAccMptDatabase
 }
 
 type BackendType string
@@ -82,7 +88,7 @@ func init() {
 
 func NewLevelDB(name string, dir string) (ethdb.KeyValueStore, error) {
 	file := filepath.Join(dir, name+".db")
-	return leveldb.New(file, 128, 1024, EvmSpace, false)
+	return leveldb.New(file, 128, 1024, AccSpace, false)
 }
 
 type dbCreator func(name string, dir string) (ethdb.KeyValueStore, error)
@@ -115,7 +121,6 @@ func CreateKvDB(name string, backend BackendType, dir string) (ethdb.KeyValueSto
 var (
 	KeyPrefixLatestHeight       = []byte{0x01}
 	KeyPrefixRootMptHash        = []byte{0x02}
-	KeyPrefixLatestStoredHeight = []byte{0x03}
 )
 
 // GetLatestBlockHeight get latest mpt storage height

@@ -247,7 +247,7 @@ func (rs *Store) loadVersion(ver int64, upgrades *types.StoreUpgrades) error {
 		}
 
 		// Load it
-		store, err := rs.loadCommitStoreFromParams(key, commitID, storeParams)
+		store, err := rs.loadCommitStoreFromParams(key, commitID, storeParams, rs.logger)
 		if err != nil {
 			return fmt.Errorf("failed to load Store: %v", err)
 		}
@@ -273,7 +273,7 @@ func (rs *Store) loadVersion(ver int64, upgrades *types.StoreUpgrades) error {
 			oldParams.key = oldKey
 
 			// load from the old name
-			oldStore, err := rs.loadCommitStoreFromParams(oldKey, rs.getCommitID(infos, oldName), oldParams)
+			oldStore, err := rs.loadCommitStoreFromParams(oldKey, rs.getCommitID(infos, oldName), oldParams, rs.logger)
 			if err != nil {
 				return fmt.Errorf("failed to load old Store '%s': %v", oldName, err)
 			}
@@ -690,7 +690,7 @@ func parsePath(path string) (storeName string, subpath string, err error) {
 	return storeName, subpath, nil
 }
 
-func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID, params storeParams) (types.CommitKVStore, error) {
+func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID, params storeParams, logger tmlog.Logger) (types.CommitKVStore, error) {
 	var db dbm.DB
 
 	if params.db != nil {
@@ -744,7 +744,7 @@ func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID
 
 	case types.StoreTypeMPT:
 		var store types.CommitKVStore
-		store = mpt.NewMptStore()
+		store = mpt.NewMptStore(logger)
 		return store, nil
 	default:
 		panic(fmt.Sprintf("unrecognized store type %v", params.typ))
