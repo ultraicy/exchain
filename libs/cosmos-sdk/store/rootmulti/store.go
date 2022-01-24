@@ -16,6 +16,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	iavltree "github.com/okex/exchain/libs/iavl"
+	"github.com/okex/exchain/libs/mpt"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	"github.com/okex/exchain/libs/tendermint/crypto/merkle"
 	"github.com/okex/exchain/libs/tendermint/crypto/tmhash"
@@ -741,6 +742,10 @@ func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID
 
 		return transient.NewStore(), nil
 
+	case types.StoreTypeMPT:
+		var store types.CommitKVStore
+		store = mpt.NewMptStore()
+		return store, nil
 	default:
 		panic(fmt.Sprintf("unrecognized store type %v", params.typ))
 	}

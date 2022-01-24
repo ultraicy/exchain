@@ -97,7 +97,6 @@ func (ak AccountKeeper) IterateAccounts(ctx sdk.Context, cb func(account exporte
 	defer iterator.Close()
 	for ; iterator.Valid(); iterator.Next() {
 		account := ak.decodeAccount(iterator.Value())
-
 		if cb(account) {
 			break
 		}
