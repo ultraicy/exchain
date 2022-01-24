@@ -100,7 +100,7 @@ func NewKeeper(
 
 		innerBlockData: defaultBlockInnerData(),
 
-		db:             sdk.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
+		db:             types.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
 		triegc:         prque.New(nil),
 		UpdatedAccount: make([]ethcmn.Address, 0),
 	}
@@ -131,7 +131,7 @@ func NewSimulateKeeper(
 		Watcher:       watcher.NewWatcher(nil),
 		Ada:           ada,
 
-		db:             sdk.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
+		db:             types.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
 		triegc:         prque.New(nil),
 		UpdatedAccount: make([]ethcmn.Address, 0),
 	}

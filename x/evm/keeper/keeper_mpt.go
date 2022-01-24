@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
+	types3 "github.com/okex/exchain/libs/types"
 	types2 "github.com/okex/exchain/x/evm/types"
 )
 
@@ -90,7 +91,7 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 	//  - HEAD:     So we don't need to reprocess any blocks in the general case
 	//  - HEAD-1:   So we don't do large reorgs if our HEAD becomes an uncle
 	//  - HEAD-127: So we have a hard limit on the number of blocks reexecuted
-	if !sdk.TrieDirtyDisabled {
+	if !types3.TrieDirtyDisabled {
 		triedb := k.db.TrieDB()
 		oecStartHeight := uint64(tmtypes.GetStartBlockHeight()) // start height of oec
 
@@ -126,7 +127,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 	curMptRoot := k.GetMptRootHash(uint64(curHeight))
 
 	triedb := k.db.TrieDB()
-	if sdk.TrieDirtyDisabled {
+	if types3.TrieDirtyDisabled {
 		if err := triedb.Commit(curMptRoot, false, nil); err != nil {
 			panic("fail to commit mpt data: " + err.Error())
 		}

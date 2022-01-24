@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	types3 "github.com/okex/exchain/libs/types"
 	"io"
 	"io/ioutil"
 	"log"
@@ -118,7 +119,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 	err = repairApp.LoadStartVersion(startVersion)
 	panicError(err)
 
-	sdk.TrieDirtyDisabled = true
+	types3.TrieDirtyDisabled = true
 	repairApp.EvmKeeper.SetTargetMptVersion(startVersion)
 
 	// repair data by apply the latest two blocks
