@@ -58,8 +58,8 @@ var (
 	KeyPrefixRootMptHash  = []byte{0x02}
 )
 
-// GetLatestBlockHeight get latest mpt storage height
-func GetLatestBlockHeight(db ethstate.Database) uint64 {
+// GetLatestStoredBlockHeight get latest mpt storage height
+func GetLatestStoredBlockHeight(db ethstate.Database) uint64 {
 	rst, err := db.TrieDB().DiskDB().Get(KeyPrefixLatestHeight)
 	if err != nil || len(rst) == 0 {
 		return 0
@@ -67,8 +67,8 @@ func GetLatestBlockHeight(db ethstate.Database) uint64 {
 	return binary.BigEndian.Uint64(rst)
 }
 
-// GetRootMptHash gets root mpt hash from block height
-func GetRootMptHash(db ethstate.Database, height uint64) ethcmn.Hash {
+// GetMptRootHash gets root mpt hash from block height
+func GetMptRootHash(db ethstate.Database, height uint64) ethcmn.Hash {
 	hhash := sdk.Uint64ToBigEndian(height)
 	rst, err := db.TrieDB().DiskDB().Get(append(KeyPrefixRootMptHash, hhash...))
 	if err != nil || len(rst) == 0 {

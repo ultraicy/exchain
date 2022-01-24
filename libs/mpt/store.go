@@ -1,7 +1,11 @@
 package mpt
 
 import (
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/okex/exchain/libs/cosmos-sdk/codec"
+	sdkerrors "github.com/okex/exchain/libs/cosmos-sdk/types/errors"
 	"github.com/okex/exchain/libs/iavl"
+	"github.com/okex/exchain/libs/tendermint/crypto/merkle"
 	tmlog "github.com/okex/exchain/libs/tendermint/libs/log"
 	"io"
 
@@ -17,6 +21,8 @@ import (
 const (
 	StoreTypeMPT = types.StoreTypeMPT
 )
+
+var cdc = codec.New()
 
 var (
 	_ types.KVStore       = (*MptStore)(nil)
@@ -55,12 +61,12 @@ func NewMptStore(logger tmlog.Logger) *MptStore {
 	db := InstanceOfAccStore()
 	triegc := prque.New(nil)
 
-	latestHeight := GetLatestBlockHeight(db)
+	latestHeight := GetLatestStoredBlockHeight(db)
 	if logger != nil {
 		logger.Info("latest stored Block", "height", latestHeight)
 	}
 
-	latestRootHash := GetRootMptHash(db, latestHeight)
+	latestRootHash := GetMptRootHash(db, latestHeight)
 	if logger != nil {
 		logger.Info("latest mpt hash", "hash", latestRootHash)
 	}
@@ -152,7 +158,7 @@ func (ms *MptStore) Commit(delta *iavl.TreeDelta, bytes []byte) (types.CommitID,
 	ms.db.TrieDB().DiskDB().Put(KeyPrefixLatestHeight, height)
 
 	if ms.logger != nil {
-		ms.logger.Info("mpt commit", "height", ms.version, "hash", root.String())
+		ms.logger.Info("acc mpt commit", "height", ms.version, "hash", root.String())
 	}
 
 	return types.CommitID{
@@ -195,7 +201,107 @@ func (ms *MptStore) GetDBReadTime() int {
 /*
 *  implement Queryable
  */
-func (ms *MptStore) Query(query abci.RequestQuery) abci.ResponseQuery {
-	//TODO implement me
-	panic("implement me")
+func (ms *MptStore) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
+	if len(req.Data) == 0 {
+		return sdkerrors.QueryResult(sdkerrors.Wrap(sdkerrors.ErrTxDecode, "query cannot be zero length"))
+	}
+
+	// store the height we chose in the response, with 0 being changed to the
+	// latest height
+	trie, err := getHeight(ms.db, req)
+	if err != nil {
+		res.Log = iavl.ErrVersionDoesNotExist.Error()
+		return
+	}
+
+	switch req.Path {
+	case "/key": // get by key
+		key := req.Data // data holds the key bytes
+
+		res.Key = key
+		if req.Prove {
+			value, proof, err := getVersionedWithProof(trie, key)
+			if err != nil {
+				res.Log = err.Error()
+				break
+			}
+			if proof == nil {
+				// Proof == nil implies that the store is empty.
+				if value != nil {
+					panic("unexpected value for an empty proof")
+				}
+			}
+			if value != nil {
+				// value was found
+				res.Value = value
+				//TODO: translate proof to RangeProof
+				res.Proof = &merkle.Proof{Ops: []merkle.ProofOp{iavl.NewValueOp(key, nil).ProofOp()}}
+			} else {
+				// value wasn't found
+				res.Value = nil
+				//TODO: translate proof to RangeProof
+				res.Proof = &merkle.Proof{Ops: []merkle.ProofOp{iavl.NewAbsenceOp(key, nil).ProofOp()}}
+			}
+		} else {
+			res.Value, _ = getVersioned(trie, key)
+		}
+
+	case "/subspace":
+		var KVs []types.KVPair
+
+		subspace := req.Data
+		res.Key = subspace
+
+		iterator := newMptIterator(trie, subspace, sdk.PrefixEndBytes(subspace))
+		for ; iterator.Valid(); iterator.Next() {
+			KVs = append(KVs, types.KVPair{Key: iterator.Key(), Value: iterator.Value()})
+		}
+
+		iterator.Close()
+		res.Value = cdc.MustMarshalBinaryLengthPrefixed(KVs)
+
+	default:
+		return sdkerrors.QueryResult(sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unexpected query path: %v", req.Path))
+	}
+
+	return res
+}
+
+// Handle gatest the latest height, if height is 0
+func getHeight(db ethstate.Database, req abci.RequestQuery) (ethstate.Trie, error) {
+	height := uint64(req.Height)
+	latestStoredBlockHeight := GetLatestStoredBlockHeight(db)
+	if height == 0 || height > latestStoredBlockHeight{
+		height = latestStoredBlockHeight
+	}
+
+	latestRootHash := GetMptRootHash(db, height)
+	return db.OpenTrie(latestRootHash)
+}
+
+func getVersioned(trie ethstate.Trie, key []byte) ([]byte, error) {
+	return trie.TryGet(key)
+}
+
+// getVersionedWithProof returns the Merkle proof for given storage slot.
+func getVersionedWithProof(trie ethstate.Trie, key []byte) ([]byte, [][]byte, error) {
+	value, err := trie.TryGet(key)
+	if err != nil {
+		return nil, nil ,err
+	}
+
+	var proof proofList
+	err = trie.Prove(crypto.Keccak256(key), 0, &proof)
+	return value, proof, err
+}
+
+type proofList [][]byte
+
+func (n *proofList) Put(key []byte, value []byte) error {
+	*n = append(*n, value)
+	return nil
+}
+
+func (n *proofList) Delete(key []byte) error {
+	panic("not supported")
 }
