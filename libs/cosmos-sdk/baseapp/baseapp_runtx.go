@@ -167,14 +167,14 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 		return sdkerrors.ResponseDeliverTx(err, 0, 0, app.trace)
 	}
 
-	app.logger.Info("(app *BaseApp) DeliverT",
+	app.logger.Debug("(app *BaseApp) DeliverT",
 		"wrapped-tx-hash", txhash(req.Tx),
 	)
 
 	if tx.GetType() == sdk.WrappedTxType {
 		req.Tx = tx.GetPayloadTxBytes()
 		tx = tx.GetPayloadTx()
-		app.logger.Info("(app *BaseApp) DeliverTx",
+		app.logger.Debug("(app *BaseApp) DeliverTx",
 			"payload-tx-hash", txhash(req.Tx),
 		)
 	}

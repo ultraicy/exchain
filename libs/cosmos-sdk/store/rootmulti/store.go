@@ -2,6 +2,7 @@ package rootmulti
 
 import (
 	"fmt"
+	types2 "github.com/okex/exchain/libs/types"
 	"io"
 	"log"
 	"path/filepath"
@@ -65,6 +66,8 @@ type Store struct {
 	interBlockCache types.MultiStorePersistentCache
 
 	logger tmlog.Logger
+
+	retrieval types2.StorageRootRetrieval
 }
 
 var (
@@ -247,7 +250,7 @@ func (rs *Store) loadVersion(ver int64, upgrades *types.StoreUpgrades) error {
 		}
 
 		// Load it
-		store, err := rs.loadCommitStoreFromParams(key, commitID, storeParams, rs.logger)
+		store, err := rs.loadCommitStoreFromParams(key, commitID, storeParams)
 		if err != nil {
 			return fmt.Errorf("failed to load Store: %v", err)
 		}
@@ -273,7 +276,7 @@ func (rs *Store) loadVersion(ver int64, upgrades *types.StoreUpgrades) error {
 			oldParams.key = oldKey
 
 			// load from the old name
-			oldStore, err := rs.loadCommitStoreFromParams(oldKey, rs.getCommitID(infos, oldName), oldParams, rs.logger)
+			oldStore, err := rs.loadCommitStoreFromParams(oldKey, rs.getCommitID(infos, oldName), oldParams)
 			if err != nil {
 				return fmt.Errorf("failed to load old Store '%s': %v", oldName, err)
 			}
@@ -690,7 +693,7 @@ func parsePath(path string) (storeName string, subpath string, err error) {
 	return storeName, subpath, nil
 }
 
-func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID, params storeParams, logger tmlog.Logger) (types.CommitKVStore, error) {
+func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID, params storeParams) (types.CommitKVStore, error) {
 	var db dbm.DB
 
 	if params.db != nil {
@@ -744,7 +747,7 @@ func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID
 
 	case types.StoreTypeMPT:
 		var store types.CommitKVStore
-		store = mpt.NewMptStore(logger)
+		store = mpt.NewMptStore(rs.logger, rs.retrieval)
 		return store, nil
 	default:
 		panic(fmt.Sprintf("unrecognized store type %v", params.typ))
@@ -1240,7 +1243,8 @@ func (rs *Store) StopStore() {
 		case types.StoreTypeDB:
 			panic("unexpected db store")
 		case types.StoreTypeMulti:
-			panic("unexpected multi store")
+			s := store.(*mpt.MptStore)
+			s.OnStop()
 		case types.StoreTypeTransient:
 		default:
 		}
@@ -1250,4 +1254,8 @@ func (rs *Store) StopStore() {
 
 func (rs *Store) SetLogger(log tmlog.Logger) {
 	rs.logger = log.With("module", "root-multi")
+}
+
+func (rs *Store) SetStorageRootRetrieval(retrieval types2.StorageRootRetrieval) {
+	rs.retrieval = retrieval
 }

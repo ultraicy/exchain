@@ -277,3 +277,7 @@ func (acc EthAccount) String() string {
 	out, _ := yaml.Marshal(acc)
 	return string(out)
 }
+
+func (acc EthAccount) GetStorageRoot() ethcmn.Hash {
+	return ethcmn.Hash{}
+}

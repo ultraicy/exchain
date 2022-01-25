@@ -259,7 +259,7 @@ func (app *BaseApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
 	// Commit. Use the header from this latest block.
 	app.setCheckState(header)
 
-	app.logger.Info("deliverState reset by BaseApp.Commit", "height", header.Height)
+	app.logger.Debug("deliverState reset by BaseApp.Commit", "height", header.Height)
 	// empty/reset the deliver state
 	app.deliverState = nil
 

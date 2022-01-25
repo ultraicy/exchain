@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
@@ -24,6 +25,8 @@ type (
 	BackendType string
 
 	dbCreator func(name string, dir string) (ethdb.KeyValueStore, error)
+
+	StorageRootRetrieval func([]byte) ethcmn.Hash
 )
 
 // These are valid backend types.

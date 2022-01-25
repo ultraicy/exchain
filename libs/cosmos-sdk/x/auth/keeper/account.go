@@ -102,3 +102,21 @@ func (ak AccountKeeper) IterateAccounts(ctx sdk.Context, cb func(account exporte
 		}
 	}
 }
+
+func (ak AccountKeeper) RetrievalStorageRoot(enc []byte)  ethcmn.Hash {
+	var acc exported.Account
+
+	val, err := ak.cdc.UnmarshalBinaryBareWithRegisteredUnmarshaller(enc, &acc)
+	if err == nil {
+		acc = val.(exported.Account)
+		return acc.GetStorageRoot()
+	}
+
+	err = ak.cdc.UnmarshalBinaryBare(enc, &acc)
+	if err == nil {
+		return acc.GetStorageRoot()
+
+	}
+
+	return ethcmn.Hash{}
+}

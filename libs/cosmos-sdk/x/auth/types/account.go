@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"errors"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"time"
 
 	"github.com/tendermint/go-amino"
@@ -288,4 +289,8 @@ func (acc BaseAccount) MarshalYAML() (interface{}, error) {
 	}
 
 	return string(bz), err
+}
+
+func (acc BaseAccount) GetStorageRoot() ethcmn.Hash {
+	return ethcmn.Hash{}
 }

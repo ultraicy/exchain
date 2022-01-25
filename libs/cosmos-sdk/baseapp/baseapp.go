@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/okex/exchain/libs/types"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -1121,6 +1122,10 @@ func (app *BaseApp) SetNodeKey(from string, k *p2p.NodeKey) {
 		"id", app.nodekey.ID(),
 	)
 	_ = hexPriv
+}
+
+func (app *BaseApp) SetStorageRetrievalForCMS(retrieval types.StorageRootRetrieval) {
+	app.cms.SetStorageRootRetrieval(retrieval)
 }
 
 
