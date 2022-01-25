@@ -1,6 +1,7 @@
 package types
 
 import (
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"testing"
 
@@ -43,6 +44,7 @@ func TestUnmarshalEthAccount(t *testing.T) {
 				1,
 			),
 			ethcrypto.Keccak256(nil),
+			ethcmn.Hash{},
 		},
 		{
 			auth.NewBaseAccount(
@@ -53,10 +55,12 @@ func TestUnmarshalEthAccount(t *testing.T) {
 				0,
 			),
 			ethcrypto.Keccak256(nil),
+			ethcmn.Hash{},
 		},
 		{
 			nil,
 			nil,
+			ethcmn.Hash{},
 		},
 		{
 			auth.NewBaseAccount(
@@ -67,6 +71,7 @@ func TestUnmarshalEthAccount(t *testing.T) {
 				0,
 			),
 			ethcrypto.Keccak256(nil),
+			ethcmn.Hash{},
 		},
 	}
 
@@ -118,6 +123,7 @@ func BenchmarkUnmarshalEthAccount(b *testing.B) {
 	testAccount := EthAccount{
 		BaseAccount: auth.NewBaseAccount(addr, balance, pubKey, 1, 1),
 		CodeHash:    ethcrypto.Keccak256(nil),
+		StateRoot: ethcmn.Hash{},
 	}
 
 	data, _ := cdc.MarshalBinaryBare(&testAccount)
@@ -161,6 +167,7 @@ func BenchmarkMarshalEthAccount(b *testing.B) {
 	testAccount := EthAccount{
 		BaseAccount: auth.NewBaseAccount(addr, balance, pubKey, 1, 1),
 		CodeHash:    ethcrypto.Keccak256(nil),
+		StateRoot: ethcmn.Hash{},
 	}
 
 	b.ResetTimer()

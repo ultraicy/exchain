@@ -2,10 +2,9 @@ package keeper
 
 import (
 	"encoding/binary"
-	"github.com/ethereum/go-ethereum/common/prque"
+	"github.com/VictoriaMetrics/fastcache"
 	ethstate "github.com/ethereum/go-ethereum/core/state"
-	"github.com/okex/exchain/libs/cosmos-sdk/client/flags"
-	"github.com/spf13/viper"
+	"github.com/okex/exchain/libs/mpt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -55,10 +54,8 @@ type Keeper struct {
 	// add inner block data
 	innerBlockData BlockInnerData
 
-	db          ethstate.Database
-	rootTrie    ethstate.Trie
-	startHeight uint64
-	triegc      *prque.Prque
+	db         ethstate.Database
+	stateCache *fastcache.Cache
 
 	EvmStateDb     *types.CommitStateDB
 	UpdatedAccount []ethcmn.Address
@@ -100,14 +97,14 @@ func NewKeeper(
 
 		innerBlockData: defaultBlockInnerData(),
 
-		db:             types.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
-		triegc:         prque.New(nil),
+		db:         mpt.InstanceOfMptStore(),
+		stateCache: fastcache.New(2 * 1024 * 1024 * 1024),
+
 		UpdatedAccount: make([]ethcmn.Address, 0),
 	}
 	k.Watcher.SetWatchDataFunc()
 	ak.SetObserverKeeper(k)
 
-	k.OpenTrie()
 	k.EvmStateDb = types.NewCommitStateDB(k.GenerateCSDBParams())
 
 	return k
@@ -131,12 +128,12 @@ func NewSimulateKeeper(
 		Watcher:       watcher.NewWatcher(nil),
 		Ada:           ada,
 
-		db:             types.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
-		triegc:         prque.New(nil),
+		db:         mpt.InstanceOfMptStore(),
+		stateCache: fastcache.New(2 * 1024 * 1024 * 1024),
+
 		UpdatedAccount: make([]ethcmn.Address, 0),
 	}
 
-	k.OpenTrie()
 	k.EvmStateDb = types.NewCommitStateDB(k.GenerateCSDBParams())
 
 	return k
@@ -163,8 +160,8 @@ func (k Keeper) GenerateCSDBParams() types.CommitStateDBParams {
 		Ada:           k.Ada,
 		Cdc:           k.cdc,
 
-		DB:   k.db,
-		Trie: k.rootTrie,
+		DB:         k.db,
+		StateCache: k.stateCache,
 	}
 }
 
@@ -176,8 +173,8 @@ func (k Keeper) GeneratePureCSDBParams() types.CommitStateDBParams {
 		Ada:      k.Ada,
 		Cdc:      k.cdc,
 
-		DB:   k.db,
-		Trie: k.rootTrie,
+		DB:         k.db,
+		StateCache: k.stateCache,
 	}
 }
 

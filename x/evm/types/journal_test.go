@@ -63,6 +63,7 @@ func (suite *JournalTestSuite) SetupTest() {
 	acc := &ethermint.EthAccount{
 		BaseAccount: auth.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), balance, nil, 0, 0),
 		CodeHash:    ethcrypto.Keccak256(nil),
+		StateRoot: ethcmn.Hash{},
 	}
 
 	suite.stateDB.accountKeeper.SetAccount(suite.ctx, acc)
@@ -141,7 +142,6 @@ func (suite *JournalTestSuite) setup() {
 		Ada:           nil,
 		Cdc:           cdc,
 		DB:            nil,
-		Trie:          nil,
 	}
 	suite.stateDB = NewCommitStateDB(csdbParams).WithContext(suite.ctx)
 	suite.stateDB.SetParams(DefaultParams())

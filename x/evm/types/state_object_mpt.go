@@ -12,7 +12,7 @@ import (
 
 func (so *stateObject) deepCopyMpt(db *CommitStateDB) *stateObject {
 	acc := db.accountKeeper.NewAccountWithAddress(db.ctx, so.account.Address)
-	newStateObj := newStateObject(db, acc, so.stateRoot)
+	newStateObj := newStateObject(db, acc)
 	if so.trie != nil {
 		newStateObj.trie = db.db.CopyTrie(so.trie)
 	}
@@ -44,21 +44,27 @@ func (so *stateObject) GetCommittedStateMpt(db ethstate.Database,  key ethcmn.Ha
 	var (
 		enc []byte
 		err error
+		value ethcmn.Hash
 	)
 
-	if enc, err = so.getTrie(db).TryGet(key.Bytes()); err != nil {
-		so.setError(err)
-		return ethcmn.Hash{}
+	prefixKey := AssembleCompositeKey(so.address.Bytes(), key.Bytes())
+	if enc = so.stateDB.StateCache.Get(nil, prefixKey.Bytes()); len(enc) > 0 {
+		value.SetBytes(enc)
+	} else {
+		if enc, err = so.getTrie(db).TryGet(key.Bytes()); err != nil {
+			so.setError(err)
+			return ethcmn.Hash{}
+		}
+
+		if len(enc) > 0 {
+			_, content, _, err := rlp.Split(enc)
+			if err != nil {
+				so.setError(err)
+			}
+			value.SetBytes(content)
+		}
 	}
 
-	var value ethcmn.Hash
-	if len(enc) > 0 {
-		_, content, _, err := rlp.Split(enc)
-		if err != nil {
-			so.setError(err)
-		}
-		value.SetBytes(content)
-	}
 	so.originStorage[key] = value
 	return value
 }
@@ -82,7 +88,7 @@ func (so *stateObject) CodeMpt(db ethstate.Database) []byte {
 func (so *stateObject) getTrie(db ethstate.Database) ethstate.Trie {
 	if so.trie == nil {
 		var err error
-		so.trie, err = db.OpenStorageTrie(so.addrHash, so.stateRoot)
+		so.trie, err = db.OpenStorageTrie(so.addrHash, so.account.StateRoot)
 		if err != nil {
 			so.setError(fmt.Errorf("failed to open storage trie: %v for addr: %s", err, so.account.EthAddress().String()))
 
@@ -99,7 +105,7 @@ func (so *stateObject) updateRoot(db ethstate.Database) {
 	if so.updateTrie(db) == nil {
 		return
 	}
-	so.stateRoot = so.trie.Hash()
+	so.account.StateRoot = so.trie.Hash()
 }
 
 // updateTrie writes cached storage modifications into the object's storage trie.
@@ -120,13 +126,15 @@ func (so *stateObject) updateTrie(db ethstate.Database) ethstate.Trie {
 		}
 		so.originStorage[key] = value
 
-		var v []byte
+		prefixKey := AssembleCompositeKey(so.address.Bytes(), key.Bytes())
 		if (value == ethcmn.Hash{}) {
 			so.setError(tr.TryDelete(key[:]))
+			so.stateDB.StateCache.Del(prefixKey.Bytes())
 		} else {
 			// Encoding []byte cannot fail, ok to ignore the error.
-			v, _ = rlp.EncodeToBytes(ethcmn.TrimLeftZeroes(value[:]))
+			v, _ := rlp.EncodeToBytes(ethcmn.TrimLeftZeroes(value[:]))
 			so.setError(tr.TryUpdate(key[:], v))
+			so.stateDB.StateCache.Set(prefixKey.Bytes(), value.Bytes())
 		}
 	}
 
@@ -149,7 +157,7 @@ func (so *stateObject) CommitTrie(db ethstate.Database) error {
 
 	root, err := so.trie.Commit(nil)
 	if err == nil {
-		so.stateRoot = root
+		so.account.StateRoot = root
 	}
 	return err
 }
@@ -214,4 +222,12 @@ func (so *stateObject) UpdateAccInfo() error {
 		}
 	}
 	return fmt.Errorf("fail to update account for address: %s", so.account.Address.String())
+}
+
+func AssembleCompositeKey(prefix, key []byte) ethcmn.Hash {
+	compositeKey := make([]byte, (len(prefix)+len(key))/2)
+
+	copy(compositeKey, prefix[:len(prefix)/2])
+	copy(compositeKey[len(prefix)/2:], key[len(key)/2:])
+	return ethcmn.BytesToHash(compositeKey)
 }

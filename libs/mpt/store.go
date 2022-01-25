@@ -1,6 +1,7 @@
 package mpt
 
 import (
+	"github.com/VictoriaMetrics/fastcache"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	types3 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -45,6 +46,7 @@ type MptStore struct {
 	triegc        *prque.Prque
 	logger        tmlog.Logger
 	rootRetrieval types2.StorageRootRetrieval
+	kvCache       *fastcache.Cache
 
 	version      int64
 	startVersion int64
@@ -67,7 +69,7 @@ func (ms *MptStore) GetFlatKVWriteCount() int {
 }
 
 func NewMptStore(logger tmlog.Logger, rootRetrieval types2.StorageRootRetrieval) *MptStore {
-	db := InstanceOfAccStore()
+	db := InstanceOfMptStore()
 	triegc := prque.New(nil)
 
 	mptStore := &MptStore{
@@ -75,6 +77,7 @@ func NewMptStore(logger tmlog.Logger, rootRetrieval types2.StorageRootRetrieval)
 		triegc:        triegc,
 		logger:        logger,
 		rootRetrieval: rootRetrieval,
+		kvCache:       fastcache.New(2 * 1024 * 1024 * 1024),
 	}
 	mptStore.openTrie()
 
@@ -116,20 +119,31 @@ func (ms *MptStore) CacheWrapWithTrace(w io.Writer, tc types.TraceContext) types
 }
 
 func (ms *MptStore) Get(key []byte) []byte {
+	if enc := ms.kvCache.Get(nil, key); len(enc) > 0 {
+		return enc
+	}
+
 	value, err := ms.trie.TryGet(key)
 	if err != nil {
 		return nil
 	}
+	ms.kvCache.Set(key, value)
+
 	return value
 }
 
 func (ms *MptStore) Has(key []byte) bool {
+	if ms.kvCache.Has(key) {
+		return true
+	}
+
 	return ms.Get(key) != nil
 }
 
 func (ms *MptStore) Set(key, value []byte) {
 	types.AssertValidValue(value)
 
+	ms.kvCache.Set(key, value)
 	err := ms.trie.TryUpdate(key, value)
 	if err != nil {
 		return
@@ -138,6 +152,7 @@ func (ms *MptStore) Set(key, value []byte) {
 }
 
 func (ms *MptStore) Delete(key []byte) {
+	ms.kvCache.Del(key)
 	err := ms.trie.TryDelete(key)
 	if err != nil {
 		return

@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	AccDataDir = "data"
-	AccSpace   = "acc"
+	MptDataDir = "data"
+	MptSpace   = "mpt"
 
 	FlagDBBackend = "db_backend"
 )
@@ -28,17 +28,17 @@ var (
 	initOnce        sync.Once
 )
 
-func InstanceOfAccStore() ethstate.Database {
+func InstanceOfMptStore() ethstate.Database {
 	initOnce.Do(func() {
 		homeDir := viper.GetString(flags.FlagHome)
-		path := filepath.Join(homeDir, AccDataDir)
+		path := filepath.Join(homeDir, MptDataDir)
 
 		backend := viper.GetString(FlagDBBackend)
 		if backend == "" {
 			backend = string(dbm.GoLevelDBBackend)
 		}
 
-		kvstore, e := types.CreateKvDB(AccSpace, types.BackendType(backend), path)
+		kvstore, e := types.CreateKvDB(MptSpace, types.BackendType(backend), path)
 		if e != nil {
 			panic("fail to open database: " + e.Error())
 		}

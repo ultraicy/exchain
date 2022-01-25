@@ -5,12 +5,10 @@ import (
 	"fmt"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
-	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
 )
 
@@ -73,28 +71,6 @@ func (csdb *CommitStateDB) ForEachStorageMpt(so *stateObject, cb func(key, value
 	return nil
 }
 
-func (csdb *CommitStateDB) UpdateAccountStorageInfo(so *stateObject) {
-	// Encode the account and update the account trie
-	addr := so.Address()
-
-	// Encoding []byte cannot fail, ok to ignore the error.
-	data, err := rlp.EncodeToBytes(so.stateRoot.Bytes())
-	if err != nil {
-		csdb.SetError(fmt.Errorf("encode state root (%x) error: %v", so.stateRoot.String(), err))
-	}
-	if err := csdb.trie.TryUpdate(addr[:], data); err != nil {
-		csdb.SetError(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
-	}
-}
-
-func (csdb *CommitStateDB) DeleteAccountStorageInfo(so *stateObject) {
-	// Delete the account from the trie
-	addr := so.Address()
-	if err := csdb.trie.TryDelete(addr[:]); err != nil {
-		csdb.SetError(fmt.Errorf("deleteStateObject (%x) error: %v", addr[:], err))
-	}
-}
-
 func (csdb *CommitStateDB) GetStateByKeyMpt(addr ethcmn.Address, key ethcmn.Hash) ethcmn.Hash {
 	var (
 		enc []byte
@@ -150,38 +126,11 @@ func (csdb *CommitStateDB) getDeletedStateObject(addr ethcmn.Address) *stateObje
 		return nil
 	}
 
-	storageRoot := types.EmptyRootHash
-	if tmtypes.HigherThanMars(csdb.ctx.BlockHeight()) {
-		root, err := csdb.loadContractStorageRoot(addr)
-		if err != nil {
-			csdb.SetError(err)
-			return nil
-		}
-		storageRoot = root
-	}
-
 	// insert the state object into the live set
-	so := newStateObject(csdb, acc, storageRoot)
+	so := newStateObject(csdb, acc)
 	csdb.setStateObject(so)
 
 	return so
-}
-
-func (csdb *CommitStateDB) loadContractStorageRoot(addr ethcmn.Address) (ethcmn.Hash, error) {
-	enc, err := csdb.trie.TryGet(addr.Bytes())
-	if err != nil {
-		return types.EmptyRootHash, err
-	}
-
-	var storageRoot ethcmn.Hash
-	if len(enc) == 0 {
-		// means the account is a normal account, not a contract account
-		storageRoot = types.EmptyRootHash
-	} else {
-		storageRoot.SetBytes(enc)
-	}
-
-	return storageRoot, nil
 }
 
 func (csdb *CommitStateDB) MarkUpdatedAcc(addList []ethcmn.Address) {
@@ -203,18 +152,6 @@ func (n *proofList) Put(key []byte, value []byte) error {
 
 func (n *proofList) Delete(key []byte) error {
 	panic("not supported")
-}
-
-// GetProof returns the Merkle proof for a given account.
-func (csdb *CommitStateDB) GetProof(addr ethcmn.Address) ([][]byte, error) {
-	return csdb.GetProofByHash(crypto.Keccak256Hash(addr.Bytes()))
-}
-
-// GetProofByHash returns the Merkle proof for a given account.
-func (csdb *CommitStateDB) GetProofByHash(addrHash ethcmn.Hash) ([][]byte, error) {
-	var proof proofList
-	err := csdb.trie.Prove(addrHash[:], 0, &proof)
-	return proof, err
 }
 
 // GetStorageProof returns the Merkle proof for given storage slot.

@@ -104,12 +104,6 @@ func RepairState(ctx *server.Context, onStart bool) {
 	startVersion := viper.GetInt64(FlagStartHeight)
 	if startVersion == 0 {
 		latestVersion := repairApp.getLatestVersion()
-		if types.HigherThanMars(latestVersion) {
-			lastMptVersion := int64(repairApp.EvmKeeper.GetLatestStoredBlockHeight())
-			if lastMptVersion < latestVersion {
-				latestVersion = lastMptVersion
-			}
-		}
 		startVersion = latestVersion - 2
 	}
 	if startVersion <= 0 {
@@ -120,7 +114,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 	panicError(err)
 
 	types3.TrieDirtyDisabled = true
-	repairApp.EvmKeeper.SetTargetMptVersion(startVersion)
+	//repairApp.EvmKeeper.SetTargetMptVersion(startVersion)
 
 	// repair data by apply the latest two blocks
 	doRepair(ctx, state, stateStoreDB, proxyApp, startVersion, latestBlockHeight, dataDir)

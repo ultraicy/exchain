@@ -463,6 +463,7 @@ func (suite *EvmTestSuite) TestExport_db() {
 			Address: acc.GetAddress(),
 		},
 		CodeHash: ethcrypto.Keccak256(code),
+		StateRoot: ethcmn.Hash{},
 	}
 	suite.app.AccountKeeper.SetAccount(suite.ctx, ethAccount)
 
@@ -558,6 +559,7 @@ func (suite *EvmTestSuite) TestExport_files() {
 			Address: acc.GetAddress(),
 		},
 		CodeHash: ethcrypto.Keccak256(code),
+		StateRoot: ethcmn.Hash{},
 	}
 	suite.app.AccountKeeper.SetAccount(suite.ctx, ethAccount)
 
@@ -634,6 +636,7 @@ func (suite *EvmTestSuite) TestExport_files1() {
 			Address: acc.GetAddress(),
 		},
 		CodeHash: ethcrypto.Keccak256(code),
+		StateRoot: ethcmn.Hash{},
 	}
 	suite.app.AccountKeeper.SetAccount(suite.ctx, ethAccount)
 
@@ -718,6 +721,7 @@ func (suite *EvmTestSuite) TestExport_files2() {
 			Address: acc.GetAddress(),
 		},
 		CodeHash: ethcrypto.Keccak256(code),
+		StateRoot: ethcmn.Hash{},
 	}
 	suite.app.AccountKeeper.SetAccount(suite.ctx, ethAccount)
 
