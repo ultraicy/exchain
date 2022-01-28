@@ -63,7 +63,6 @@ func main() {
 
 	ctx := server.NewDefaultContext()
 
-
 	rootCmd := &cobra.Command{
 		Use:               "exchaind",
 		Short:             "ExChain App Daemon (server)",
@@ -94,7 +93,6 @@ func main() {
 		subscribeCmd(cdc),
 	)
 
-
 	subFunc := func(logger log.Logger) log.Subscriber {
 		return logevents.NewProvider(logger)
 	}
@@ -108,6 +106,7 @@ func main() {
 		0, "Assert registered invariants every N blocks")
 	rootCmd.PersistentFlags().BoolVar(&sdk.TrieDirtyDisabled, sdk.FlagTrieDirtyDisabled, false, "Disable cache dirty trie")
 	rootCmd.PersistentFlags().BoolVar(&sdk.EnableDoubleWrite, sdk.FlagEnableDoubleWrite, false, "Enable double write data (acc & evm) to the MPT tree when using the IAVL tree")
+	rootCmd.PersistentFlags().BoolVar(&sdk.MptAsnyc, sdk.FlagEnableTrieCommitAsync, false, "enable mpt async commit")
 	err := executor.Execute()
 	if err != nil {
 		panic(err)

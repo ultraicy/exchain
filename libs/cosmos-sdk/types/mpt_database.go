@@ -21,6 +21,7 @@ var (
 
 	TrieDirtyDisabled      = false
 	TrieCacheSize     uint = 2048 // MB
+	MptAsnyc               = false
 	EnableDoubleWrite      = false
 )
 
@@ -28,10 +29,11 @@ const (
 	EvmDataDir = "data"
 	EvmSpace   = "evm"
 
-	FlagDBBackend         = "db_backend"
-	FlagTrieDirtyDisabled = "trie-dirty-disabled"
-	FlagTrieCacheSize     = "trie-cache-size"
-	FlagEnableDoubleWrite = "enable-double-write"
+	FlagDBBackend             = "db_backend"
+	FlagTrieDirtyDisabled     = "trie-dirty-disabled"
+	FlagTrieCacheSize         = "trie-cache-size"
+	FlagEnableDoubleWrite     = "enable-double-write"
+	FlagEnableTrieCommitAsync = "enable-trie-commit-async"
 )
 
 func InstanceOfEvmStore(homeDir string) ethstate.Database {
