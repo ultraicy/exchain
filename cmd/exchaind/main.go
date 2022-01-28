@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/okex/exchain/app/logevents"
-	"github.com/okex/exchain/libs/types"
 	"io"
 
 	"github.com/okex/exchain/app/rpc"
@@ -105,8 +104,9 @@ func main() {
 	executor := cli.PrepareBaseCmd(rootCmd, "OKEXCHAIN", app.DefaultNodeHome)
 	rootCmd.PersistentFlags().UintVar(&invCheckPeriod, flagInvCheckPeriod,
 		0, "Assert registered invariants every N blocks")
-	rootCmd.PersistentFlags().BoolVar(&types.TrieDirtyDisabled, types.FlagTrieDirtyDisabled, false, "Disable cache dirty trie")
-	rootCmd.PersistentFlags().BoolVar(&types.EnableDoubleWrite, types.FlagEnableDoubleWrite, false, "Enable double write data (acc & evm) to the MPT tree when using the IAVL tree")
+	rootCmd.PersistentFlags().BoolVar(&sdk.TrieDirtyDisabled, sdk.FlagTrieDirtyDisabled, false, "Disable cache dirty trie")
+	rootCmd.PersistentFlags().BoolVar(&sdk.EnableDoubleWrite, sdk.FlagEnableDoubleWrite, false, "Enable double write data (acc & evm) to the MPT tree when using the IAVL tree")
+	rootCmd.PersistentFlags().BoolVar(&sdk.MptAsnyc, sdk.FlagEnableTrieCommitAsync, false, "enable mpt async commit")
 	err := executor.Execute()
 	if err != nil {
 		panic(err)

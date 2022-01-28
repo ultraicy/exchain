@@ -7,19 +7,32 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"path/filepath"
 	"strings"
+	"sync"
+	ethstate "github.com/ethereum/go-ethereum/core/state"
+)
+
+
+
+var (
+	gEvmMptDatabase ethstate.Database = nil
+
+	initOnce sync.Once
+
+	TrieDirtyDisabled      = false
+	TrieCacheSize     uint = 2048 // MB
+	MptAsnyc               = false
+	EnableDoubleWrite      = false
 )
 
 const (
-	FlagTrieDirtyDisabled = "trie-dirty-disabled"
-	FlagTrieCacheSize     = "trie-cache-size"
-	FlagEnableDoubleWrite = "enable-double-write"
-)
+	EvmDataDir = "data"
+	EvmSpace   = "evm"
 
-var (
-	TrieDirtyDisabled      = false
-	TrieCacheSize     uint = 2048 // MB
-	EnableDoubleWrite      = false
-)
+	FlagDBBackend             = "db_backend"
+	FlagTrieDirtyDisabled     = "trie-dirty-disabled"
+	FlagTrieCacheSize         = "trie-cache-size"
+	FlagEnableDoubleWrite     = "enable-double-write"
+	FlagEnableTrieCommitAsync = "enable-trie-commit-async"
 
 //------------------------------------------
 type (

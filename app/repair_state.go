@@ -111,6 +111,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 	if startVersion == 0 {
 		if types.HigherThanMars(commitVersion) {
 			lastMptVersion := int64(repairApp.EvmKeeper.GetLatestStoredBlockHeight())
+			log.Println("LastMptVersion", lastMptVersion, "CommitVersion", commitVersion)
 			if lastMptVersion < commitVersion {
 				commitVersion = lastMptVersion
 			}
@@ -174,6 +175,7 @@ func doRepair(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 	blockExec.SetIsAsyncDeliverTx(viper.GetBool(sm.FlagParalleledTx))
 	blockExec.SetEventBus(eventBus)
 	global.SetGlobalHeight(startHeight + 1)
+	log.Println("ready do repair", "start", startHeight+1, "end", latestHeight)
 	for height := startHeight + 1; height <= latestHeight; height++ {
 		repairBlock, repairBlockMeta := loadBlock(height, dataDir)
 		state, _, err = blockExec.ApplyBlock(state, repairBlockMeta.BlockID, repairBlock)
@@ -194,6 +196,7 @@ func doRepair(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 		repairedAppHash := res.LastBlockAppHash
 		log.Println("Repaired block height", repairedBlockHeight)
 		log.Println("Repaired app hash", fmt.Sprintf("%X", repairedAppHash))
+		log.Println("Repaired lastResultHash", fmt.Sprintf("%X", state.LastResultsHash))
 	}
 }
 

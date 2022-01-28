@@ -2,9 +2,9 @@ package app
 
 import (
 	"fmt"
+	"github.com/okex/exchain/app/utils/sanity"
 	"github.com/okex/exchain/libs/mpt"
 	"github.com/okex/exchain/libs/types"
-	"github.com/okex/exchain/app/utils/sanity"
 	"io"
 	"math/big"
 	"os"
@@ -191,7 +191,7 @@ func NewOKExChainApp(
 		"MercuryHeight", tmtypes.GetMercuryHeight(),
 		"VenusHeight", tmtypes.GetVenusHeight(),
 		"MarsHeight", tmtypes.GetMarsHeight(),
-		)
+	)
 	onceLog.Do(func() {
 		iavllog := logger.With("module", "iavl")
 		logFunc := func(level int, format string, args ...interface{}) {
@@ -629,7 +629,14 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
 		if tmtypes.HigherThanMars(ctx.BlockHeight()) || types.EnableDoubleWrite {
-			ak.PushData2Database(ctx)
+			if tmtypes.HigherThanMars(ctx.BlockHeight()) || sdk.EnableDoubleWrite {
+				if sdk.MptAsnyc {
+					ak.AddAsyncTask(ctx.BlockHeight())
+				} else {
+					ak.PushData2Database(ctx.BlockHeight(), ctx.Logger())
+				}
+
+			}
 		}
 	}
 }

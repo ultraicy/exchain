@@ -122,6 +122,7 @@ func replayCmd(ctx *server.Context) *cobra.Command {
 	cmd.Flags().Bool(flatkv.FlagEnable, false, "Enable flat kv storage for read performance")
 	cmd.Flags().BoolVar(&sm.EnableParaSender, sm.FlagParaSender, false, "Enable Parallel Sender")
 
+	cmd.Flags().BoolVar(&sdk.MptAsnyc, sdk.FlagEnableTrieCommitAsync, false, "enable mpt async commit")
 	return cmd
 }
 
