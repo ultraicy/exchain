@@ -13,8 +13,7 @@ import (
 
 var (
 	gEvmMptDatabase ethstate.Database = nil
-
-	initOnce sync.Once
+	initOnce        sync.Once
 
 	TrieDirtyDisabled      = false
 	TrieCacheSize     uint = 2048 // MB
