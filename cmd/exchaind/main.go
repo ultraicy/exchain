@@ -32,6 +32,7 @@ import (
 	"github.com/okex/exchain/app/crypto/ethsecp256k1"
 	okexchain "github.com/okex/exchain/app/types"
 	"github.com/okex/exchain/cmd/client"
+	"github.com/okex/exchain/libs/types"
 	"github.com/okex/exchain/x/genutil"
 	genutilcli "github.com/okex/exchain/x/genutil/client/cli"
 	genutiltypes "github.com/okex/exchain/x/genutil/types"
@@ -104,9 +105,9 @@ func main() {
 	executor := cli.PrepareBaseCmd(rootCmd, "OKEXCHAIN", app.DefaultNodeHome)
 	rootCmd.PersistentFlags().UintVar(&invCheckPeriod, flagInvCheckPeriod,
 		0, "Assert registered invariants every N blocks")
-	rootCmd.PersistentFlags().BoolVar(&sdk.TrieDirtyDisabled, sdk.FlagTrieDirtyDisabled, false, "Disable cache dirty trie")
-	rootCmd.PersistentFlags().BoolVar(&sdk.EnableDoubleWrite, sdk.FlagEnableDoubleWrite, false, "Enable double write data (acc & evm) to the MPT tree when using the IAVL tree")
-	rootCmd.PersistentFlags().BoolVar(&sdk.MptAsnyc, sdk.FlagEnableTrieCommitAsync, false, "enable mpt async commit")
+	rootCmd.PersistentFlags().BoolVar(&types.TrieDirtyDisabled, types.FlagTrieDirtyDisabled, false, "Disable cache dirty trie")
+	rootCmd.PersistentFlags().BoolVar(&types.EnableDoubleWrite, types.FlagEnableDoubleWrite, false, "Enable double write data (acc & evm) to the MPT tree when using the IAVL tree")
+	rootCmd.PersistentFlags().BoolVar(&types.MptAsnyc, types.FlagEnableTrieCommitAsync, false, "enable mpt async commit")
 	err := executor.Execute()
 	if err != nil {
 		panic(err)

@@ -2,16 +2,14 @@ package types
 
 import (
 	"fmt"
+	ethstate "github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"path/filepath"
 	"strings"
 	"sync"
-	ethstate "github.com/ethereum/go-ethereum/core/state"
 )
-
-
 
 var (
 	gEvmMptDatabase ethstate.Database = nil
@@ -33,6 +31,7 @@ const (
 	FlagTrieCacheSize         = "trie-cache-size"
 	FlagEnableDoubleWrite     = "enable-double-write"
 	FlagEnableTrieCommitAsync = "enable-trie-commit-async"
+)
 
 //------------------------------------------
 type (

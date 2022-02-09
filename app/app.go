@@ -34,6 +34,7 @@ import (
 	tmos "github.com/okex/exchain/libs/tendermint/libs/os"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	dbm "github.com/okex/exchain/libs/tm-db"
+	libTypes "github.com/okex/exchain/libs/types"
 	"github.com/okex/exchain/x/ammswap"
 	"github.com/okex/exchain/x/common/analyzer"
 	commonversion "github.com/okex/exchain/x/common/version"
@@ -629,8 +630,8 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
 		if tmtypes.HigherThanMars(ctx.BlockHeight()) || types.EnableDoubleWrite {
-			if tmtypes.HigherThanMars(ctx.BlockHeight()) || sdk.EnableDoubleWrite {
-				if sdk.MptAsnyc {
+			if tmtypes.HigherThanMars(ctx.BlockHeight()) || libTypes.EnableDoubleWrite {
+				if libTypes.MptAsnyc {
 					ak.AddAsyncTask(ctx.BlockHeight())
 				} else {
 					ak.PushData2Database(ctx.BlockHeight(), ctx.Logger())
