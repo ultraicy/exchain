@@ -953,6 +953,7 @@ func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore
 			}
 		}
 
+		fmt.Println("acc-commit")
 		commitID, outputDelta := store.CommitterCommit(inputDeltaMap[key.Name()]) // CommitterCommit
 
 		if store.GetStoreType() == types.StoreTypeTransient {
