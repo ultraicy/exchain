@@ -241,6 +241,7 @@ func (app *BaseApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
 	// MultiStore (app.cms) so when Commit() is called is persists those values.
 	app.commitBlockCache()
 	app.deliverState.ms.Write()
+	fmt.Println("ready COMMIT", app.deliverState.ctx.BlockHeight())
 
 	var input iavl.TreeDeltaMap
 	if tmtypes.DownloadDelta && req.DeltaMap != nil {
