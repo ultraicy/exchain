@@ -636,6 +636,7 @@ func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 				ak.AddAsyncTask(ctx.BlockHeight())
 			} else {
 				ts := time.Now()
+				fmt.Println("baseapp.commit()")
 				ak.PushData2Database(ctx.BlockHeight(), ctx.Logger())
 				fmt.Println("end to pushDataToDataBase-not_sync", "height", ctx.BlockHeight(), "ms", time.Now().Sub(ts).Milliseconds())
 			}
