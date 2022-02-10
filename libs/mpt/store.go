@@ -177,7 +177,6 @@ func (ms *MptStore) ReverseIterator(start, end []byte) types.Iterator {
  */
 func (ms *MptStore) CommitterCommit(delta *iavl.TreeDelta) (types.CommitID, *iavl.TreeDelta) {
 	ms.version++
-
 	root, err := ms.trie.Commit(nil)
 	if err != nil {
 		panic("fail to commit trie data: " + err.Error())
@@ -186,6 +185,7 @@ func (ms *MptStore) CommitterCommit(delta *iavl.TreeDelta) (types.CommitID, *iav
 
 	// TODO: use a thread to push data to database
 	// push data to database
+	fmt.Println("acc-commit")
 	ms.PushData2Database(ms.version)
 
 	return types.CommitID{
