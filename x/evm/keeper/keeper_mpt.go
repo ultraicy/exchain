@@ -174,11 +174,12 @@ func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 			} else {
 				// Flush an entire trie and restart the counters, it's not a thread safe process,
 				// cannot use a go thread to run, or it will lead 'fatal error: concurrent map read and map write' error
+				ts := time.Now()
 				if err := triedb.Commit(chRoot, true, nil); err != nil {
 					panic("fail to commit mpt data: " + err.Error())
 				}
 				k.SetLatestStoredBlockHeight(uint64(chosen))
-				log.Info("async push data to db", "block", chosen, "trieHash", chRoot)
+				log.Info("async push data to db-1", "block", chosen, "trieHash", chRoot, "ts", time.Now().Sub(ts).Milliseconds())
 			}
 
 			// Garbage collect anything below our required write retention
