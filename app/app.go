@@ -631,18 +631,18 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
-		if tmtypes.HigherThanMars(ctx.BlockHeight()) || types.EnableDoubleWrite {
-			if tmtypes.HigherThanMars(ctx.BlockHeight()) || libTypes.EnableDoubleWrite {
-				if libTypes.MptAsnyc {
-					ak.AddAsyncTask(ctx.BlockHeight())
-				} else {
-					ts := time.Now()
-					ak.PushData2Database(ctx.BlockHeight(), ctx.Logger())
-					fmt.Println("end to pushDataToDataBase-not_sync", "height", ctx.BlockHeight(), "ms", time.Now().Sub(ts).Milliseconds())
-
-				}
+		fmt.Println("???", libTypes.MptAsnyc, tmtypes.HigherThanMars(ctx.BlockHeight()))
+		if tmtypes.HigherThanMars(ctx.BlockHeight()) || libTypes.EnableDoubleWrite {
+			if libTypes.MptAsnyc {
+				ak.AddAsyncTask(ctx.BlockHeight())
+			} else {
+				ts := time.Now()
+				ak.PushData2Database(ctx.BlockHeight(), ctx.Logger())
+				fmt.Println("end to pushDataToDataBase-not_sync", "height", ctx.BlockHeight(), "ms", time.Now().Sub(ts).Milliseconds())
 
 			}
+
 		}
+
 	}
 }
