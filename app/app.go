@@ -630,8 +630,8 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 }
 
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
+	fmt.Println("???", libTypes.MptAsnyc, tmtypes.HigherThanMars(ctx.BlockHeight()))
 	return func(ctx sdk.Context) {
-		fmt.Println("???", libTypes.MptAsnyc, tmtypes.HigherThanMars(ctx.BlockHeight()))
 		if tmtypes.HigherThanMars(ctx.BlockHeight()) || libTypes.EnableDoubleWrite {
 			if libTypes.MptAsnyc {
 				ak.AddAsyncTask(ctx.BlockHeight())
