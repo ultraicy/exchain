@@ -241,6 +241,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc.Pin(trace.Persist)
 	startTime = time.Now().UnixNano()
 
+	fmt.Println("244--")
 	// Lock mempool, commit app state, update mempoool.
 	commitResp, retainHeight, err := blockExec.commit(state, block, deltaInfo, abciResponses.DeliverTxs)
 	endTime = time.Now().UnixNano()
@@ -251,6 +252,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	global.SetGlobalHeight(block.Height)
 
 	trc.Pin("evpool")
+	fmt.Printf("255--")
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
 
