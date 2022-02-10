@@ -174,6 +174,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc := trace.NewTracer(trace.ApplyBlock)
 	dc := blockExec.deltaContext
 
+	fmt.Println("17770-0000")
 	defer func() {
 		trace.GetElapsedInfo().AddInfo(trace.Height, fmt.Sprintf("%d", block.Height))
 		trace.GetElapsedInfo().AddInfo(trace.Tx, fmt.Sprintf("%d", len(block.Data.Txs)))
