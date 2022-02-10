@@ -232,6 +232,7 @@ func (app *BaseApp) CheckTxDev(req abci.RequestCheckTx) abci.ResponseCheckTx {
 func (app *BaseApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
 	header := app.deliverState.ctx.BlockHeader()
 
+	fmt.Println("commit---", app.mptCommitHandler != nil)
 	if app.mptCommitHandler != nil {
 		app.mptCommitHandler(app.deliverState.ctx)
 	}
