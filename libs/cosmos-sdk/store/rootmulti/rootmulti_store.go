@@ -945,6 +945,7 @@ func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore
 	outputDeltaMap := iavltree.TreeDeltaMap{}
 
 	for key, store := range storeMap {
+		fmt.Println("CommitStores", !tmtypes.HigherThanMars(version), key.Name() == mpt.StoreKey, !types2.EnableDoubleWrite)
 		// old version, mpt(acc) store
 		if !tmtypes.HigherThanMars(version) && key.Name() == mpt.StoreKey {
 			// only write to iavl
@@ -953,6 +954,7 @@ func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore
 			}
 		}
 
+		fmt.Println("commit-956")
 		commitID, outputDelta := store.CommitterCommit(inputDeltaMap[key.Name()]) // CommitterCommit
 
 		if store.GetStoreType() == types.StoreTypeTransient {
