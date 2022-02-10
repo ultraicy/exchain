@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/okex/exchain/app/ante"
 	okexchaincodec "github.com/okex/exchain/app/codec"
@@ -31,6 +32,7 @@ import (
 	"github.com/okex/exchain/libs/iavl"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
+
 	tmos "github.com/okex/exchain/libs/tendermint/libs/os"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	dbm "github.com/okex/exchain/libs/tm-db"
@@ -634,7 +636,10 @@ func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 				if libTypes.MptAsnyc {
 					ak.AddAsyncTask(ctx.BlockHeight())
 				} else {
+					ts := time.Now()
 					ak.PushData2Database(ctx.BlockHeight(), ctx.Logger())
+					ctx.Logger().Info("end to pushDataToDataBase-not_sync", "height", ctx.BlockHeight(), "ms", time.Now().Sub(ts).Milliseconds())
+
 				}
 
 			}
