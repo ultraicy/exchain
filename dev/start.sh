@@ -21,7 +21,7 @@ killbyname() {
 
 
 run() {
-    LOG_LEVEL=main:info,iavl:debug,*:error,state:info,provider:info
+    LOG_LEVEL=main:info,*:error
 
     exchaind start --pruning=nothing --rpc.unsafe \
       --local-rpc-port 26657 \
@@ -33,6 +33,7 @@ run() {
       --iavl-enable-async-commit \
       --enable-gid \
       --append-pid=true \
+       --enable-double-write=true \
       --iavl-commit-interval-height 1000 \
       --iavl-output-modules evm=1,acc=0 \
       --trace --home $HOME_SERVER --chain-id $CHAINID \
@@ -102,6 +103,10 @@ if [ "$(uname -s)" == "Darwin" ]; then
     sed -i "" 's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
     sed -i "" 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
     sed -i "" 's/"enable_contract_blocked_list": false/"enable_contract_blocked_list": true/' $HOME_SERVER/config/genesis.json
+
+    sed -i "" 's/size = 10000/size=10000000/ ' $HOME_SERVER/config/config.toml
+    sed -i "" 's/max_tx_num_per_block = 300/max_tx_num_per_block = 9000/' $HOME_SERVER/config/config.toml
+
 else 
     sed -i 's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
     sed -i 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
@@ -125,5 +130,4 @@ exchaind validate-genesis --home $HOME_SERVER
 exchaincli config keyring-backend test
 
 run
-
 # exchaincli tx send captain 0x83D83497431C2D3FEab296a9fba4e5FaDD2f7eD0 1okt --fees 1okt -b block -y
