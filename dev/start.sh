@@ -108,7 +108,9 @@ if [ "$(uname -s)" == "Darwin" ]; then
     sed -i "" 's/size = 10000/size=10000000/ ' $HOME_SERVER/config/config.toml
     sed -i "" 's/max_tx_num_per_block = 300/max_tx_num_per_block = 9000/' $HOME_SERVER/config/config.toml
 
-else 
+else
+    sed -i  's/size = 10000/size=10000000/ ' $HOME_SERVER/config/config.toml
+    sed -i  's/max_tx_num_per_block = 300/max_tx_num_per_block = 9000/' $HOME_SERVER/config/config.toml
     sed -i 's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
     sed -i 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
     sed -i 's/"enable_contract_blocked_list": false/"enable_contract_blocked_list": true/' $HOME_SERVER/config/genesis.json
