@@ -33,6 +33,7 @@ run() {
       --iavl-enable-async-commit \
       --enable-gid \
       --append-pid=true \
+      --trie-dirty-disabled=true \
        --enable-double-write=true \
       --iavl-commit-interval-height 1000 \
       --iavl-output-modules evm=1,acc=0 \
