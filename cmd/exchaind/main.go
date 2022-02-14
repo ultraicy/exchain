@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/okex/exchain/app/logevents"
+	"github.com/okex/exchain/libs/types"
 	"io"
 
 	"github.com/okex/exchain/app/rpc"
@@ -32,7 +33,6 @@ import (
 	"github.com/okex/exchain/app/crypto/ethsecp256k1"
 	okexchain "github.com/okex/exchain/app/types"
 	"github.com/okex/exchain/cmd/client"
-	"github.com/okex/exchain/libs/types"
 	"github.com/okex/exchain/x/genutil"
 	genutilcli "github.com/okex/exchain/x/genutil/client/cli"
 	genutiltypes "github.com/okex/exchain/x/genutil/types"
