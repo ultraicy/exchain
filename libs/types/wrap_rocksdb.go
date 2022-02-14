@@ -5,8 +5,9 @@ package types
 
 import (
 	"github.com/ethereum/go-ethereum/ethdb"
+	tmdb "github.com/okex/exchain/libs/tm-db"
+	"github.com/pkg/errors"
 	"github.com/tecbot/gorocksdb"
-	db "github.com/tendermint/tm-db"
 )
 
 func init() {
@@ -17,11 +18,11 @@ func init() {
 }
 
 type WrapRocksDB struct {
-	*db.RocksDB
+	*tmdb.RocksDB
 }
 
 func NewWrapRocksDB(name string, dir string) (*WrapRocksDB, error) {
-	rdb, err := db.NewRocksDB(name, dir)
+	rdb, err := tmdb.NewRocksDB(name, dir)
 
 	return &WrapRocksDB{rdb}, err
 }
@@ -31,19 +32,21 @@ func (db *WrapRocksDB) Put(key []byte, value []byte) error {
 }
 
 func (db *WrapRocksDB) NewBatch() ethdb.Batch {
-	return NewWrapRocksDBBatch(db)
+	return NewWrapRocksDBBatch(db.RocksDB)
 }
 
 func (db *WrapRocksDB) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
-	ro := gorocksdb.NewDefaultReadOptions()
-	itr := db.DB().NewIterator(ro)
-
 	st := append(prefix, start...)
-	return NewWrapRocksDBIterator(itr, st, nil, false)
+	return NewWrapRocksDBIterator(db.RocksDB, st, nil)
 }
 
 func (db *WrapRocksDB) Stat(property string) (string, error) {
-	return db.DB().GetProperty(property), nil
+	stats := db.RocksDB.Stats()
+	if pro, ok := stats[property]; ok {
+		return pro, nil
+	}
+
+	return "", errors.New("property not exist")
 }
 
 func (db *WrapRocksDB) Compact(start []byte, limit []byte) error {
