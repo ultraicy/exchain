@@ -141,12 +141,12 @@ func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 				panic("fail to commit mpt data: " + err.Error())
 			}
 			k.SetLatestStoredBlockHeight(uint64(curHeight))
-			log.Info("sync push data to db", "block", curHeight, "trieHash", curMptRoot)
+			log.Info("sync push evm data to db", "block", curHeight, "trieHash", curMptRoot)
 		}
 	} else {
 		// Full but not archive node, do proper garbage collection
 		triedb.Reference(curMptRoot, ethcmn.Hash{}) // metadata reference to keep trie alive
-		k.triegc.Push(curMptRoot, -curHeight)
+		k.triegc.Push(curMptRoot, -int64(curHeight))
 
 		if curHeight > TriesInMemory {
 			// If we exceeded our memory allowance, flush matured singleton nodes to disk
@@ -169,7 +169,6 @@ func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 			// If the header is missing (canonical chain behind), we're reorging a low
 			// diff sidechain. Suspend committing until this operation is completed.
 			chRoot := k.GetMptRootHash(uint64(chosen))
-
 			if chRoot == (ethcmn.Hash{}) || chRoot == types.EmptyRootHash {
 				chRoot = ethcmn.Hash{}
 			} else {
@@ -180,9 +179,8 @@ func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 					panic("fail to commit mpt data: " + err.Error())
 				}
 				k.SetLatestStoredBlockHeight(uint64(chosen))
-				log.Info("async push data to db-1", "block", chosen, "trieHash", chRoot, "ts", time.Now().Sub(ts).Milliseconds())
+				log.Info("async push evm data to db", "block", chosen, "trieHash", chRoot, "ts", time.Now().Sub(ts).Milliseconds())
 			}
-
 			// Garbage collect anything below our required write retention
 			for !k.triegc.Empty() {
 				root, number := k.triegc.Pop()
@@ -220,7 +218,7 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 	}
 }
 
-func (k *Keeper) AddAsyncTask(height int64) {
+func (k *Keeper) AddMptAsyncTask(height int64) {
 	k.asyncChain <- height
 }
 func (k *Keeper) asyncCommit(log log.Logger) {

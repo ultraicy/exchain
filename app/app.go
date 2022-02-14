@@ -633,12 +633,11 @@ func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
 		if tmtypes.HigherThanMars(ctx.BlockHeight()) || libTypes.EnableDoubleWrite {
 			if libTypes.MptAsnyc {
-				ak.AddAsyncTask(ctx.BlockHeight())
+				ak.AddMptAsyncTask(ctx.BlockHeight())
 			} else {
 				ts := time.Now()
-				fmt.Println("baseapp.commit()")
 				ak.PushData2Database(ctx.BlockHeight(), ctx.Logger())
-				fmt.Println("end to pushDataToDataBase-not_sync", "height", ctx.BlockHeight(), "ms", time.Now().Sub(ts).Milliseconds())
+				ctx.Logger().Info("storage-mpt-pushData2Database-not-async", "height", ctx.BlockHeight(), "ts", time.Now().Sub(ts).Milliseconds())
 			}
 		}
 	}

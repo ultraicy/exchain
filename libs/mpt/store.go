@@ -36,11 +36,11 @@ var (
 
 // MptStore Implements types.KVStore and CommitKVStore.
 type MptStore struct {
-	trie    ethstate.Trie
-	db      ethstate.Database
-	triegc  *prque.Prque
-	logger  tmlog.Logger
-	kvCache *fastcache.Cache
+	trie          ethstate.Trie
+	db            ethstate.Database
+	triegc        *prque.Prque
+	logger        tmlog.Logger
+	kvCache       *fastcache.Cache
 
 	version      int64
 	startVersion int64
@@ -71,10 +71,10 @@ func NewMptStore(logger tmlog.Logger, id types.CommitID) (*MptStore, error) {
 	triegc := prque.New(nil)
 
 	mptStore := &MptStore{
-		db:      db,
-		triegc:  triegc,
-		logger:  logger,
-		kvCache: fastcache.New(2 * 1024 * 1024 * 1024),
+		db:            db,
+		triegc:        triegc,
+		logger:        logger,
+		kvCache:       fastcache.New(2 * 1024 * 1024 * 1024),
 	}
 	err := mptStore.openTrie(id)
 
@@ -177,6 +177,7 @@ func (ms *MptStore) ReverseIterator(start, end []byte) types.Iterator {
  */
 func (ms *MptStore) CommitterCommit(delta *iavl.TreeDelta) (types.CommitID, *iavl.TreeDelta) {
 	ms.version++
+
 	root, err := ms.trie.Commit(nil)
 	if err != nil {
 		panic("fail to commit trie data: " + err.Error())
@@ -185,7 +186,6 @@ func (ms *MptStore) CommitterCommit(delta *iavl.TreeDelta) (types.CommitID, *iav
 
 	// TODO: use a thread to push data to database
 	// push data to database
-	fmt.Println("acc-commit")
 	ms.PushData2Database(ms.version)
 
 	return types.CommitID{
@@ -270,7 +270,6 @@ func (ms *MptStore) PushData2Database(curHeight int64) {
 			if chRoot == (ethcmn.Hash{}) || chRoot == types3.EmptyRootHash {
 				chRoot = ethcmn.Hash{}
 			} else {
-				fmt.Println("ready to commit!!!")
 				// Flush an entire trie and restart the counters, it's not a thread safe process,
 				// cannot use a go thread to run, or it will lead 'fatal error: concurrent map read and map write' error
 				if err := triedb.Commit(chRoot, true, nil); err != nil {

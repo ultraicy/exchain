@@ -2,34 +2,25 @@ package types
 
 import (
 	"fmt"
-	ethstate "github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"path/filepath"
 	"strings"
-	"sync"
-)
-
-var (
-	gEvmMptDatabase ethstate.Database = nil
-	initOnce        sync.Once
-
-	TrieDirtyDisabled      = false
-	TrieCacheSize     uint = 2048 // MB
-	MptAsnyc               = false
-	EnableDoubleWrite      = false
 )
 
 const (
-	EvmDataDir = "data"
-	EvmSpace   = "evm"
-
-	FlagDBBackend             = "db_backend"
 	FlagTrieDirtyDisabled     = "trie-dirty-disabled"
 	FlagTrieCacheSize         = "trie-cache-size"
 	FlagEnableDoubleWrite     = "enable-double-write"
 	FlagEnableTrieCommitAsync = "enable-trie-commit-async"
+)
+
+var (
+	TrieDirtyDisabled      = false
+	TrieCacheSize     uint = 2048 // MB
+	MptAsnyc               = false
+	EnableDoubleWrite      = false
 )
 
 //------------------------------------------
