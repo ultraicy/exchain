@@ -35,6 +35,7 @@ run() {
       --append-pid=true \
       --iavl-commit-interval-height 10 \
       --iavl-output-modules evm=0,acc=0 \
+      --paralleled-tx=true \
       --trace --home $HOME_SERVER --chain-id $CHAINID \
       --elapsed Round=1,CommitRound=1,Produce=1 \
       --rest.laddr "tcp://localhost:8545" > oec.txt 2>&1 &
@@ -106,8 +107,8 @@ if [ "$(uname -s)" == "Darwin" ]; then
     sed -i "" 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
     sed -i "" 's/"enable_contract_blocked_list": false/"enable_contract_blocked_list": true/' $HOME_SERVER/config/genesis.json
 else
-      sed -i "" 's/size = 10000/size=1000000/ ' $HOME_SERVER/config/config.toml
-      sed -i "" 's/max_tx_num_per_block = 300/max_tx_num_per_block = 10000/' $HOME_SERVER/config/config.toml
+      sed -i  's/size = 10000/size=1000000/ ' $HOME_SERVER/config/config.toml
+      sed -i  's/max_tx_num_per_block = 300/max_tx_num_per_block = 10000/' $HOME_SERVER/config/config.toml
     sed -i 's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
     sed -i 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
     sed -i 's/"enable_contract_blocked_list": false/"enable_contract_blocked_list": true/' $HOME_SERVER/config/genesis.json

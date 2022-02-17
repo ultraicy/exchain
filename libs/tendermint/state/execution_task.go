@@ -73,6 +73,7 @@ func (t *executionTask) run() {
 	var abciResponses *ABCIResponses
 	var err error
 
+	fmt.Println("StartRun")
 	if t.isParalleledTx {
 		abciResponses, err = execBlockOnProxyAppAsync(t.logger, t.proxyApp, t.block, t.db)
 	} else {
