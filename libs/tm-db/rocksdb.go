@@ -61,7 +61,7 @@ func NewRocksDB(name string, dir string) (*RocksDB, error) {
 		}
 		bbto.SetBlockCache(gorocksdb.NewLRUCache(cache))
 	}
-	bbto.SetFilterPolicy(gorocksdb.NewBloomFilter(10))
+	//bbto.SetFilterPolicy(gorocksdb.NewBloomFilter(10))
 
 	opts := gorocksdb.NewDefaultOptions()
 	opts.SetBlockBasedTableFactory(bbto)
@@ -107,7 +107,7 @@ func NewRocksDB(name string, dir string) (*RocksDB, error) {
 	}
 
 	// 1.5GB maximum memory use for writebuffer.
-	opts.OptimizeLevelStyleCompaction(512 * 1024 * 1024)
+	opts.OptimizeLevelStyleCompaction(1 * 1024 * 1024)
 	return NewRocksDBWithOptions(name, dir, opts)
 }
 
