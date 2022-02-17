@@ -2,19 +2,18 @@ package app
 
 import (
 	"fmt"
-	"github.com/okex/exchain/libs/mpt"
-	"github.com/okex/exchain/libs/types"
-	"github.com/okex/exchain/app/utils/sanity"
 	"io"
 	"math/big"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/okex/exchain/app/ante"
 	okexchaincodec "github.com/okex/exchain/app/codec"
 	appconfig "github.com/okex/exchain/app/config"
 	"github.com/okex/exchain/app/refund"
 	okexchain "github.com/okex/exchain/app/types"
+	"github.com/okex/exchain/app/utils/sanity"
 	bam "github.com/okex/exchain/libs/cosmos-sdk/baseapp"
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	"github.com/okex/exchain/libs/cosmos-sdk/server"
@@ -26,14 +25,19 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/x/bank"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/crisis"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/mint"
+	govclient "github.com/okex/exchain/libs/cosmos-sdk/x/mint/client"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/supply"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/upgrade"
 	"github.com/okex/exchain/libs/iavl"
+	"github.com/okex/exchain/libs/mpt"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
+	"github.com/okex/exchain/libs/types"
+
 	tmos "github.com/okex/exchain/libs/tendermint/libs/os"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	dbm "github.com/okex/exchain/libs/tm-db"
+	libTypes "github.com/okex/exchain/libs/types"
 	"github.com/okex/exchain/x/ammswap"
 	"github.com/okex/exchain/x/common/analyzer"
 	commonversion "github.com/okex/exchain/x/common/version"
@@ -93,6 +97,7 @@ var (
 			evmclient.ManageContractDeploymentWhitelistProposalHandler,
 			evmclient.ManageContractBlockedListProposalHandler,
 			evmclient.ManageContractMethodBlockedListProposalHandler,
+			govclient.ManageTreasuresProposalHandler,
 		),
 		params.AppModuleBasic{},
 		crisis.AppModuleBasic{},
@@ -324,12 +329,14 @@ func NewOKExChainApp(
 		AddRoute(distr.RouterKey, distr.NewCommunityPoolSpendProposalHandler(app.DistrKeeper)).
 		AddRoute(dex.RouterKey, dex.NewProposalHandler(&app.DexKeeper)).
 		AddRoute(farm.RouterKey, farm.NewManageWhiteListProposalHandler(&app.FarmKeeper)).
-		AddRoute(evm.RouterKey, evm.NewManageContractDeploymentWhitelistProposalHandler(app.EvmKeeper))
+		AddRoute(evm.RouterKey, evm.NewManageContractDeploymentWhitelistProposalHandler(app.EvmKeeper)).
+		AddRoute(mint.RouterKey, mint.NewManageTreasuresProposalHandler(&app.MintKeeper))
 	govProposalHandlerRouter := keeper.NewProposalHandlerRouter()
 	govProposalHandlerRouter.AddRoute(params.RouterKey, &app.ParamsKeeper).
 		AddRoute(dex.RouterKey, &app.DexKeeper).
 		AddRoute(farm.RouterKey, &app.FarmKeeper).
-		AddRoute(evm.RouterKey, app.EvmKeeper)
+		AddRoute(evm.RouterKey, app.EvmKeeper).
+		AddRoute(mint.RouterKey, &app.MintKeeper)
 	app.GovKeeper = gov.NewKeeper(
 		app.cdc, app.keys[gov.StoreKey], app.ParamsKeeper, app.subspaces[gov.DefaultParamspace],
 		app.SupplyKeeper, &stakingKeeper, gov.DefaultParamspace, govRouter,
@@ -339,6 +346,7 @@ func NewOKExChainApp(
 	app.DexKeeper.SetGovKeeper(app.GovKeeper)
 	app.FarmKeeper.SetGovKeeper(app.GovKeeper)
 	app.EvmKeeper.SetGovKeeper(app.GovKeeper)
+	app.MintKeeper.SetGovKeeper(app.GovKeeper)
 
 	// register the staking hooks
 	// NOTE: stakingKeeper above is passed by reference, so that it will contain these hooks
@@ -628,8 +636,14 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
-		if tmtypes.HigherThanMars(ctx.BlockHeight()) || types.EnableDoubleWrite {
-			ak.PushData2Database(ctx)
+		if tmtypes.HigherThanMars(ctx.BlockHeight()) || libTypes.EnableDoubleWrite {
+			if libTypes.MptAsnyc {
+				ak.AddMptAsyncTask(ctx.BlockHeight())
+			} else {
+				ts := time.Now()
+				ak.PushData2Database(ctx.BlockHeight(), ctx.Logger())
+				ctx.Logger().Info("storage-mpt-pushData2Database-not-async", "height", ctx.BlockHeight(), "ts", time.Now().Sub(ts).Milliseconds())
+			}
 		}
 	}
 }

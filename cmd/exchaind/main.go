@@ -85,6 +85,7 @@ func main() {
 		replayCmd(ctx),
 		repairStateCmd(ctx),
 		displayStateCmd(ctx),
+		migrateCmd(ctx),
 		// AddGenesisAccountCmd allows users to add accounts to the genesis file
 		AddGenesisAccountCmd(ctx, cdc, app.DefaultNodeHome, app.DefaultCLIHome),
 		flags.NewCompletionCmd(rootCmd, true),
@@ -107,6 +108,7 @@ func main() {
 		0, "Assert registered invariants every N blocks")
 	rootCmd.PersistentFlags().BoolVar(&types.TrieDirtyDisabled, types.FlagTrieDirtyDisabled, false, "Disable cache dirty trie")
 	rootCmd.PersistentFlags().BoolVar(&types.EnableDoubleWrite, types.FlagEnableDoubleWrite, false, "Enable double write data (acc & evm) to the MPT tree when using the IAVL tree")
+	rootCmd.PersistentFlags().BoolVar(&types.MptAsnyc, types.FlagEnableTrieCommitAsync, false, "enable mpt async commit")
 	err := executor.Execute()
 	if err != nil {
 		panic(err)

@@ -7,9 +7,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
+	"github.com/okex/exchain/libs/tendermint/libs/log"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	types3 "github.com/okex/exchain/libs/types"
 	types2 "github.com/okex/exchain/x/evm/types"
+	"time"
 )
 
 var (
@@ -67,6 +69,10 @@ func (k *Keeper) OpenTrie() {
 	}
 	k.rootTrie = tr
 	k.startHeight = latestStoredHeight
+
+	if latestStoredHeight == 0 {
+		k.startHeight = uint64(tmtypes.GetStartBlockHeight())
+	}
 }
 
 func (k *Keeper) SetTargetMptVersion(targetVersion int64) {
@@ -108,10 +114,12 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 				if recentMptRoot == (ethcmn.Hash{}) || recentMptRoot == types.EmptyRootHash {
 					recentMptRoot = ethcmn.Hash{}
 				} else {
+					k.mptCommitMu.Lock()
 					if err := triedb.Commit(recentMptRoot, true, nil); err != nil {
 						k.Logger(ctx).Error("Failed to commit recent state trie", "err", err)
 						break
 					}
+					k.mptCommitMu.Unlock()
 				}
 				k.SetLatestStoredBlockHeight(version)
 				k.Logger(ctx).Info("Writing evm cached state to disk", "block", version, "trieHash", recentMptRoot)
@@ -126,21 +134,23 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 	return nil
 }
 
-func (k *Keeper) PushData2Database(ctx sdk.Context) {
-	curHeight := ctx.BlockHeight()
+func (k *Keeper) PushData2Database(height int64, log log.Logger) {
+	curHeight := height
 	curMptRoot := k.GetMptRootHash(uint64(curHeight))
 
 	triedb := k.db.TrieDB()
 	if types3.TrieDirtyDisabled {
 		if curMptRoot == (ethcmn.Hash{}) || curMptRoot == types.EmptyRootHash {
-			curMptRoot = (ethcmn.Hash{})
+			curMptRoot = ethcmn.Hash{}
 		} else {
+			k.mptCommitMu.Lock()
 			if err := triedb.Commit(curMptRoot, false, nil); err != nil {
 				panic("fail to commit mpt data: " + err.Error())
 			}
+			k.mptCommitMu.Unlock()
 		}
 		k.SetLatestStoredBlockHeight(uint64(curHeight))
-		k.Logger(ctx).Info("sync push evm data to db", "block", curHeight, "trieHash", curMptRoot)
+		log.Info("sync push evm data to db", "block", curHeight, "trieHash", curMptRoot)
 	} else {
 		// Full but not archive node, do proper garbage collection
 		triedb.Reference(curMptRoot, ethcmn.Hash{}) // metadata reference to keep trie alive
@@ -163,6 +173,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 				return
 			}
 
+			k.mptCommitMu.Lock()
 			// If the header is missing (canonical chain behind), we're reorging a low
 			// diff sidechain. Suspend committing until this operation is completed.
 			chRoot := k.GetMptRootHash(uint64(chosen))
@@ -176,22 +187,27 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 				}
 			}
 			k.SetLatestStoredBlockHeight(uint64(chosen))
-			k.Logger(ctx).Info("async push evm data to db", "block", chosen, "trieHash", chRoot)
+			log.Info("async push evm data to db", "block", chosen, "trieHash", chRoot)
 
 			// Garbage collect anything below our required write retention
 			for !k.triegc.Empty() {
 				root, number := k.triegc.Pop()
-				if int64(-number) > chosen {
+				if -number > chosen {
 					k.triegc.Push(root, number)
 					break
 				}
 				triedb.Dereference(root.(ethcmn.Hash))
 			}
+
+			k.mptCommitMu.Unlock()
 		}
 	}
 }
 
 func (k *Keeper) Commit(ctx sdk.Context) {
+	k.mptCommitMu.Lock()
+	defer k.mptCommitMu.Unlock()
+
 	// commit contract storage mpt trie
 	k.EvmStateDb.WithContext(ctx).Commit(true)
 
@@ -209,4 +225,21 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 		})
 		k.SetMptRootHash(ctx, root)
 	}
+}
+
+func (k *Keeper) AddMptAsyncTask(height int64) {
+	k.asyncChain <- height
+}
+func (k *Keeper) asyncCommit(logger log.Logger) {
+	go func() {
+		for {
+			select {
+			case height := <-k.asyncChain:
+				ts := time.Now()
+				k.PushData2Database(height, logger)
+				logger.Info("storage-mpt-pushData2Database-async", "height", height, "ts", time.Now().Sub(ts).Milliseconds())
+			}
+		}
+	}()
+
 }

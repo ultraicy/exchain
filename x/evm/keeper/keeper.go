@@ -6,11 +6,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/prque"
 	ethstate "github.com/ethereum/go-ethereum/core/state"
 	"github.com/okex/exchain/libs/mpt"
-	"github.com/okex/exchain/libs/cosmos-sdk/client/flags"
-	"github.com/spf13/viper"
 	"math/big"
+	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
@@ -65,6 +63,9 @@ type Keeper struct {
 
 	EvmStateDb     *types.CommitStateDB
 	UpdatedAccount []ethcmn.Address
+
+	mptCommitMu *sync.Mutex
+	asyncChain  chan int64
 }
 
 // NewKeeper generates new evm module keeper
@@ -103,16 +104,19 @@ func NewKeeper(
 
 		innerBlockData: defaultBlockInnerData(),
 
-		db:             mpt.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
+		db:             mpt.InstanceOfEvmStore(),
 		triegc:         prque.New(nil),
 		stateCache:     fastcache.New(2 * 1024 * 1024 * 1024),
 		UpdatedAccount: make([]ethcmn.Address, 0),
+		mptCommitMu:    &sync.Mutex{},
+		asyncChain:     make(chan int64, 1000),
 	}
 	k.Watcher.SetWatchDataFunc()
 	ak.SetObserverKeeper(k)
 
 	k.OpenTrie()
 	k.EvmStateDb = types.NewCommitStateDB(k.GenerateCSDBParams())
+	k.asyncCommit(logger)
 
 	return k
 }
@@ -135,7 +139,7 @@ func NewSimulateKeeper(
 		Watcher:       watcher.NewWatcher(nil),
 		Ada:           ada,
 
-		db:             mpt.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
+		db:             mpt.InstanceOfEvmStore(),
 		triegc:         prque.New(nil),
 		stateCache:     fastcache.New(2 * 1024 * 1024 * 1024),
 		UpdatedAccount: make([]ethcmn.Address, 0),
@@ -224,12 +228,12 @@ func (k Keeper) SetBlockHash(ctx sdk.Context, hash []byte, height int64) {
 // ----------------------------------------------------------------------------
 
 // GetHeightHash returns the block header hash associated with a given block height and chain epoch number.
-func (k Keeper) GetHeightHash(ctx sdk.Context, height uint64) common.Hash {
+func (k Keeper) GetHeightHash(ctx sdk.Context, height uint64) ethcmn.Hash {
 	return types.CreateEmptyCommitStateDB(k.GenerateCSDBParams(), ctx).GetHeightHash(height)
 }
 
 // SetHeightHash sets the block header hash associated with a given height.
-func (k Keeper) SetHeightHash(ctx sdk.Context, height uint64, hash common.Hash) {
+func (k Keeper) SetHeightHash(ctx sdk.Context, height uint64, hash ethcmn.Hash) {
 	types.CreateEmptyCommitStateDB(k.GenerateCSDBParams(), ctx).SetHeightHash(height, hash)
 }
 
@@ -261,10 +265,10 @@ func (k Keeper) SetBlockBloom(ctx sdk.Context, height int64, bloom ethtypes.Bloo
 }
 
 // GetAccountStorage return state storage associated with an account
-func (k Keeper) GetAccountStorage(ctx sdk.Context, address common.Address) (types.Storage, error) {
+func (k Keeper) GetAccountStorage(ctx sdk.Context, address ethcmn.Address) (types.Storage, error) {
 	storage := types.Storage{}
 	csdb := types.CreateEmptyCommitStateDB(k.GenerateCSDBParams(), ctx)
-	err := csdb.ForEachStorage(address, func(key, value common.Hash) bool {
+	err := csdb.ForEachStorage(address, func(key, value ethcmn.Hash) bool {
 		storage = append(storage, types.NewState(key, value))
 		return false
 	})
