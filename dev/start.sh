@@ -21,7 +21,7 @@ killbyname() {
 
 
 run() {
-    LOG_LEVEL=main:debug,iavl:info,*:error,state:info,provider:info
+    LOG_LEVEL=main:info,iavl:info,*:error
 
     exchaind start --pruning=nothing --rpc.unsafe \
       --local-rpc-port 26657 \
@@ -99,10 +99,13 @@ cat $HOME_SERVER/config/genesis.json | jq '.app_state["mint"]["params"]["mint_de
 # Enable EVM
 
 if [ "$(uname -s)" == "Darwin" ]; then
+    sed -i "" 's/size = 10000/size=1000000/ ' $HOME_SERVER/config/config.toml
+    sed -i "" 's/max_tx_num_per_block = 300/max_tx_num_per_block = 10000/' $HOME_SERVER/config/config.toml
+
     sed -i "" 's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
     sed -i "" 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
     sed -i "" 's/"enable_contract_blocked_list": false/"enable_contract_blocked_list": true/' $HOME_SERVER/config/genesis.json
-else 
+else
     sed -i 's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
     sed -i 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
     sed -i 's/"enable_contract_blocked_list": false/"enable_contract_blocked_list": true/' $HOME_SERVER/config/genesis.json
