@@ -3,6 +3,8 @@ package keeper
 import (
 	"encoding/binary"
 	"fmt"
+	"time"
+
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -11,12 +13,11 @@ import (
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	types3 "github.com/okex/exchain/libs/types"
 	types2 "github.com/okex/exchain/x/evm/types"
-	"time"
 )
 
 var (
-	KeyPrefixRootMptHash        = []byte{0x01}
-	KeyPrefixLatestStoredHeight = []byte{0x02}
+	KeyPrefixRootMptHash        = []byte{0x02}
+	KeyPrefixLatestStoredHeight = []byte{0x01}
 )
 
 const TriesInMemory = 100
