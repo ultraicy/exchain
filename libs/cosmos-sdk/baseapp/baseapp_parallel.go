@@ -254,7 +254,7 @@ func (app *BaseApp) ParserBlockTxsSender(txs [][]byte) {
 				if err != nil {
 					return
 				}
-				_, _, signerCache := app.getTxFee(app.getContextForTx(runTxModeDeliver, tx), cmstx)
+				_, _, signerCache := app.getTxFee(app.checkState.ctx, cmstx)
 
 				if signerCache != nil {
 					paraManager.SetTxSignCache(tx, signerCache)
