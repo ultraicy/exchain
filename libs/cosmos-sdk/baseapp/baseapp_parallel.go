@@ -60,7 +60,11 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 	return res
 }
 
-func (app *BaseApp) ParallelTxs(txs [][]byte) []*abci.ResponseDeliverTx {
+func (app *BaseApp) ParallelTxs(txs [][]byte, onlyCalSender bool) []*abci.ResponseDeliverTx {
+	if onlyCalSender {
+		app.ParserBlockTxsSender(txs)
+		return nil
+	}
 	txWithIndex := make([][]byte, 0)
 	for index, v := range txs {
 		txWithIndex = append(txWithIndex, getTxByteWithIndex(v, index))
@@ -230,6 +234,36 @@ func (app *BaseApp) deliverTxWithCache(txByte []byte) *executeResult {
 	return asyncExe
 }
 
+func (app *BaseApp) ParserBlockTxsSender(txs [][]byte) {
+	go func() {
+		if len(txs) < 20 {
+			return
+		}
+
+		paraManager := app.parallelTxManage
+		paraManager.ClearSignCache()
+		poolChan := make(chan struct{}, 64)
+		for _, tx := range txs {
+			poolChan <- struct{}{}
+
+			go func(tx []byte) {
+				defer func() {
+					<-poolChan
+				}()
+				cmstx, err := app.txDecoder(tx)
+				if err != nil {
+					return
+				}
+				_, _, signerCache := app.getTxFee(app.getContextForTx(runTxModeDeliver, tx), cmstx)
+
+				if signerCache != nil {
+					paraManager.SetTxSignCache(tx, signerCache)
+				}
+			}(tx)
+		}
+	}()
+}
+
 type executeResult struct {
 	resp       abci.ResponseDeliverTx
 	ms         sdk.CacheMultiStore
@@ -339,6 +373,9 @@ type parallelTxManager struct {
 	indexMapBytes []string
 
 	currTxFee sdk.Coins
+
+	blockTxSenderLock sync.RWMutex
+	blockTxSender     map[string]sdk.SigCache
 }
 
 type txStatus struct {
@@ -402,6 +439,24 @@ func (f *parallelTxManager) isReRun(tx string) bool {
 		return false
 	}
 	return data.reRun
+}
+
+func (f *parallelTxManager) GetTxSignCache(tx []byte) sdk.SigCache {
+	f.blockTxSenderLock.RLock()
+	defer f.blockTxSenderLock.RUnlock()
+	return f.blockTxSender[string(tx)]
+}
+
+func (f *parallelTxManager) SetTxSignCache(tx []byte, s sdk.SigCache) {
+	f.blockTxSenderLock.Lock()
+	defer f.blockTxSenderLock.Unlock()
+	f.blockTxSender[string(tx)] = s
+}
+
+func (f *parallelTxManager) ClearSignCache() {
+	f.blockTxSenderLock.Lock()
+	defer f.blockTxSenderLock.Unlock()
+	f.blockTxSender = make(map[string]sdk.SigCache)
 }
 
 type asyncCache struct {
