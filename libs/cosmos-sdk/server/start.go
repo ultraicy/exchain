@@ -201,6 +201,7 @@ which accepts a path for the resulting pprof file.
 	viper.BindPFlag(FlagGoroutineNum, cmd.Flags().Lookup(FlagGoroutineNum))
 
 	cmd.Flags().Bool(state.FlagParalleledTx, false, "Enable Parallel Tx")
+	cmd.Flags().BoolVar(&state.EnableParaSender, state.FlagParaSender, false, "Enable Parallel Sender")
 	registerRestServerFlags(cmd)
 	registerAppFlagFn(cmd)
 	// add support for all Tendermint-specific command line options

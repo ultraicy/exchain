@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	sm "github.com/okex/exchain/libs/tendermint/state"
 	"sync"
 
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
@@ -442,6 +443,9 @@ func (f *parallelTxManager) isReRun(tx string) bool {
 }
 
 func (f *parallelTxManager) GetTxSignCache(tx []byte) sdk.SigCache {
+	if !sm.EnableParaSender {
+		return nil
+	}
 	f.blockTxSenderLock.RLock()
 	defer f.blockTxSenderLock.RUnlock()
 	return f.blockTxSender[string(tx)]

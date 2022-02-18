@@ -12,6 +12,8 @@ import (
 
 var (
 	FlagParalleledTx = "paralleled-tx"
+	FlagParaSender   = "paralleled-sender"
+	EnableParaSender = false //TODO change to true or delete it ?
 )
 
 func execBlockOnProxyAppAsync(
