@@ -223,13 +223,13 @@ func (app *BaseApp) asyncDeliverTx(txWithIndex []byte) {
 	tx, err := app.txDecoder(getRealTxByte(txWithIndex))
 	if err != nil {
 		asyncExe := newExecuteResult(sdkerrors.ResponseDeliverTx(err, 0, 0, app.trace), nil, txStatus.indexInBlock, txStatus.evmIndex)
-		app.parallelTxManage.workgroup.Push(asyncExe)
+		app.parallelTxManage.workgroup.PushResult(asyncExe)
 		return
 	}
 
 	if !txStatus.isEvmTx {
 		asyncExe := newExecuteResult(abci.ResponseDeliverTx{}, nil, txStatus.indexInBlock, txStatus.evmIndex)
-		app.parallelTxManage.workgroup.Push(asyncExe)
+		app.parallelTxManage.workgroup.PushResult(asyncExe)
 		return
 	}
 
@@ -249,7 +249,7 @@ func (app *BaseApp) asyncDeliverTx(txWithIndex []byte) {
 
 	asyncExe := newExecuteResult(resp, m, txStatus.indexInBlock, txStatus.evmIndex)
 	asyncExe.err = e
-	app.parallelTxManage.workgroup.Push(asyncExe)
+	app.parallelTxManage.workgroup.PushResult(asyncExe)
 }
 
 func useCache(mode runTxMode) bool {

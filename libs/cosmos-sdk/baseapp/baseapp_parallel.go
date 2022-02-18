@@ -166,7 +166,7 @@ func (app *BaseApp) runTxs(txs [][]byte) []*abci.ResponseDeliverTx {
 
 	app.parallelTxManage.workgroup.cb = asyncCb
 	for _, tx := range txs {
-		go app.asyncDeliverTx(tx)
+		app.parallelTxManage.workgroup.PushTask(tx)
 	}
 
 	if len(txs) > 0 {
@@ -301,16 +301,37 @@ func newExecuteResult(r abci.ResponseDeliverTx, ms sdk.CacheMultiStore, counter 
 type asyncWorkGroup struct {
 	workCh chan *executeResult
 	cb     func(*executeResult)
+
+	taskCh      chan []byte
+	taskRunFunc func([]byte)
 }
 
 func newAsyncWorkGroup() *asyncWorkGroup {
-	return &asyncWorkGroup{
+	aw := &asyncWorkGroup{
 		workCh: make(chan *executeResult, 64),
 		cb:     nil,
 	}
+	for index := 0; index < 64; index++ {
+		aw.startWorker()
+	}
+	return aw
 }
 
-func (a *asyncWorkGroup) Push(item *executeResult) {
+func (a *asyncWorkGroup) startWorker() {
+	for true {
+		select {
+		case tx := <-a.taskCh:
+			a.taskRunFunc(tx)
+
+		}
+	}
+}
+
+func (a *asyncWorkGroup) PushTask(tx []byte) {
+	a.taskCh <- tx
+}
+
+func (a *asyncWorkGroup) PushResult(item *executeResult) {
 	a.workCh <- item
 }
 

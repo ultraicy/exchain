@@ -231,6 +231,7 @@ func NewBaseApp(
 	}
 	app.cms.SetLogger(app.logger)
 
+	app.parallelTxManage.workgroup.taskRunFunc = app.asyncDeliverTx
 	app.parallelTxManage.workgroup.Start()
 
 	return app
