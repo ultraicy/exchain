@@ -39,3 +39,12 @@ func fixLogForParallelTxHandler(ek *evm.Keeper) sdk.LogFix {
 		return ek.FixLog(execResults)
 	}
 }
+
+func preLoadSender(ak auth.AccountKeeper) sdk.PreLoadSender {
+	return func(ctx sdk.Context, tx sdk.Tx) {
+		if evmTx, ok := tx.(evmtypes.MsgEthereumTx); ok {
+			signCache, _ := evmTx.VerifySig(evmTx.ChainID(), ctx.BlockHeight(), nil)
+			ak.GetAccount(ctx, signCache.GetFrom().Bytes())
+		}
+	}
+}

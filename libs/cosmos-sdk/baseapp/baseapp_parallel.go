@@ -60,7 +60,39 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 	return res
 }
 
-func (app *BaseApp) ParallelTxs(txs [][]byte) []*abci.ResponseDeliverTx {
+func (app *BaseApp) PreLoadAccount(txs [][]byte) {
+	preLoadCtx := app.checkState.ctx
+	preLoadCtx = preLoadCtx.WithCache(app.blockCache)
+	fmt.Println("BlockCache", app.blockCache.AccountSize())
+
+	poolChan := make(chan struct{}, 64)
+	for _, tx := range txs {
+		poolChan <- struct{}{}
+
+		go func(tx []byte) {
+			defer func() {
+				<-poolChan
+			}()
+			cmstx, err := app.txDecoder(tx)
+			if err != nil {
+				return
+			}
+			app.preLoadSender(preLoadCtx, cmstx)
+		}(tx)
+	}
+	fmt.Println("LLLL", app.blockCache.AccountSize())
+}
+
+func (app *BaseApp) ParallelTxs(txs [][]byte, onlyCalSender bool) []*abci.ResponseDeliverTx {
+	fmt.Println("pppp")
+	if onlyCalSender {
+		fmt.Println("preLoad")
+		app.PreLoadAccount(txs)
+		return nil
+
+		return nil
+	}
+
 	txWithIndex := make([][]byte, 0)
 	for index, v := range txs {
 		txWithIndex = append(txWithIndex, getTxByteWithIndex(v, index))

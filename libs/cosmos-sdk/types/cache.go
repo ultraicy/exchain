@@ -140,6 +140,10 @@ func (c *Cache) UpdateCode(key []byte, value []byte, isdirty bool) {
 	}
 }
 
+func (c *Cache) AccountSize() int {
+	return len(c.accMap)
+}
+
 func (c *Cache) GetAccount(addr ethcmn.Address) (account, uint64, bool) {
 	if c.skip() {
 		return nil, 0, false
