@@ -42,7 +42,7 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 
 	var ops uint64 = 0
 
-	maxGoRoutine := 64
+	maxGoRoutine := 32
 	if maxGoRoutine > txSize {
 		maxGoRoutine = txSize
 	}
