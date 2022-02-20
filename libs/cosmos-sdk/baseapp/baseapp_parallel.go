@@ -9,6 +9,7 @@ import (
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	sm "github.com/okex/exchain/libs/tendermint/state"
 	"sync"
+	"sync/atomic"
 )
 
 var (
@@ -39,15 +40,13 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 
 	res := make([]*extraDataForTx, txSize, txSize)
 
-	//var ops uint64 = 0
+	var ops uint64 = 0
 
 	maxGoRoutine := 64
 	if maxGoRoutine > txSize {
 		maxGoRoutine = txSize
 	}
-	//stopChan := make(chan struct{}, 1)
-	var wg sync.WaitGroup
-	wg.Add(txSize)
+	stopChan := make(chan struct{}, 1)
 
 	poolChan := make(chan struct{}, maxGoRoutine)
 
@@ -58,12 +57,11 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 		go func() {
 			defer func() {
 				<-poolChan
-				wg.Done()
+				atomic.AddUint64(&ops, 1)
 
-				//atomic.AddUint64(&ops, 1)
-				//if atomic.LoadUint64(&ops) == uint64(txSize) {
-				//	stopChan <- struct{}{}
-				//}
+				if atomic.LoadUint64(&ops) == uint64(txSize) {
+					stopChan <- struct{}{}
+				}
 			}()
 
 			tx, err := app.txDecoder(txBytes)
@@ -79,8 +77,7 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 			}
 		}()
 	}
-	//<-stopChan
-	wg.Wait()
+	<-stopChan
 
 	return res
 }
