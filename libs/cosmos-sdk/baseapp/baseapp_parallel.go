@@ -42,7 +42,7 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 
 	var ops uint64 = 0
 
-	maxGoRoutine := 32
+	maxGoRoutine := 128
 	if maxGoRoutine > txSize {
 		maxGoRoutine = txSize
 	}
@@ -56,12 +56,12 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 		txBytes := txBytes
 		go func() {
 			defer func() {
-				<-poolChan
 				atomic.AddUint64(&ops, 1)
 
 				if atomic.LoadUint64(&ops) == uint64(txSize) {
 					stopChan <- struct{}{}
 				}
+				<-poolChan
 			}()
 
 			tx, err := app.txDecoder(txBytes)
