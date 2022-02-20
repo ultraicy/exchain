@@ -8,6 +8,7 @@ import (
 	sdkerrors "github.com/okex/exchain/libs/cosmos-sdk/types/errors"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	sm "github.com/okex/exchain/libs/tendermint/state"
+	"runtime"
 	"sync"
 	"sync/atomic"
 )
@@ -42,7 +43,8 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 
 	var ops uint64 = 0
 
-	maxGoRoutine := 128
+	fmt.Println("lll--", runtime.NumCPU())
+	maxGoRoutine := 32
 	if maxGoRoutine > txSize {
 		maxGoRoutine = txSize
 	}
