@@ -431,9 +431,9 @@ func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
 	}
 
 	fmt.Println("sdk.EnableMultiCache", sdk.EnableMultiCache)
-	if sdk.EnableMultiCache {
-		proxyAppConn.ParallelTxs(transTxsToBytes(block.Txs), true)
-	}
+	//if sdk.EnableMultiCache {
+	//	proxyAppConn.ParallelTxs(transTxsToBytes(block.Txs), true)
+	//}
 
 	// Run txs of block.
 	for count, tx := range block.Txs {
