@@ -4,10 +4,12 @@ import (
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth"
 	authante "github.com/okex/exchain/libs/cosmos-sdk/x/auth/ante"
+	authTypes "github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/bank"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/supply"
 	"github.com/okex/exchain/x/evm"
 	evmtypes "github.com/okex/exchain/x/evm/types"
+	"sync"
 )
 
 // feeCollectorHandler set or get the value of feeCollectorAcc
@@ -40,11 +42,24 @@ func fixLogForParallelTxHandler(ek *evm.Keeper) sdk.LogFix {
 	}
 }
 
-func preLoadSender(ak auth.AccountKeeper) sdk.PreLoadSender {
-	return func(ctx sdk.Context, tx sdk.Tx) {
+func preLoadSender(ak auth.AccountKeeper, key sdk.StoreKey) sdk.PreLoadSender {
+	return func(ctx sdk.Context, tx sdk.Tx, mu *sync.Mutex) {
 		if evmTx, ok := tx.(evmtypes.MsgEthereumTx); ok {
 			signCache, _ := evmTx.VerifySig(evmTx.ChainID(), ctx.BlockHeight(), nil)
-			ak.GetAccount(ctx, signCache.GetFrom().Bytes())
+
+			store := ctx.KVStore(key)
+			addr := authTypes.AddressStoreKey(signCache.GetFrom().Bytes())
+			bz := store.Get(addr)
+			if bz == nil {
+				mu.Lock()
+				ctx.Cache().UpdateAccount(addr, nil, len(bz), false)
+				mu.Unlock()
+				return
+			}
+			acc := ak.DecodeAccount(bz)
+			mu.Lock()
+			ctx.Cache().UpdateAccount(addr, acc, len(bz), false)
+			mu.Unlock()
 		}
 	}
 }

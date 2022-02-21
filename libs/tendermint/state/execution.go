@@ -429,6 +429,7 @@ func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
 		return nil, err
 	}
 
+	proxyAppConn.ParallelTxs(transTxsToBytes(block.Txs), true)
 	// Run txs of block.
 	for count, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})

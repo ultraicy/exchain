@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	sdkerrors "github.com/okex/exchain/libs/cosmos-sdk/types/errors"
@@ -61,35 +62,43 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 }
 
 func (app *BaseApp) PreLoadAccount(txs [][]byte) {
-	preLoadCtx := app.checkState.ctx
+	if len(txs) == 0 {
+		return
+	}
+	preLoadCtx := app.getContextForTx(runTxModeDeliver, txs[0])
 	preLoadCtx = preLoadCtx.WithCache(app.blockCache)
-	fmt.Println("BlockCache", app.blockCache.AccountSize())
+	var mu sync.Mutex
+	txSize := len(txs)
+	var ops uint64 = 0
+	stopChan := make(chan struct{}, 1)
 
-	poolChan := make(chan struct{}, 64)
+	poolChan := make(chan struct{}, 32)
 	for _, tx := range txs {
 		poolChan <- struct{}{}
 
 		go func(tx []byte) {
 			defer func() {
+				atomic.AddUint64(&ops, 1)
+
+				if atomic.LoadUint64(&ops) == uint64(txSize) {
+					stopChan <- struct{}{}
+				}
 				<-poolChan
 			}()
 			cmstx, err := app.txDecoder(tx)
 			if err != nil {
 				return
 			}
-			app.preLoadSender(preLoadCtx, cmstx)
+			app.preLoadSender(preLoadCtx, cmstx, &mu)
 		}(tx)
 	}
-	fmt.Println("LLLL", app.blockCache.AccountSize())
+	<-stopChan
+	fmt.Println("preLoad size", app.blockCache.AccountSize())
 }
 
 func (app *BaseApp) ParallelTxs(txs [][]byte, onlyCalSender bool) []*abci.ResponseDeliverTx {
-	fmt.Println("pppp")
 	if onlyCalSender {
-		fmt.Println("preLoad")
 		app.PreLoadAccount(txs)
-		return nil
-
 		return nil
 	}
 
