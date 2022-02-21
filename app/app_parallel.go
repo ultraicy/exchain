@@ -44,7 +44,7 @@ func fixLogForParallelTxHandler(ek *evm.Keeper) sdk.LogFix {
 
 func preLoadSender(ak auth.AccountKeeper, key sdk.StoreKey) sdk.PreLoadSender {
 	return func(ctx sdk.Context, addr sdk.AccAddress, mu *sync.Mutex) {
-		return
+		//return
 
 		store := ctx.KVStore(key)
 		authAddr := authTypes.AddressStoreKey(addr)
