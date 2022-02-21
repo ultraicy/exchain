@@ -20,6 +20,8 @@ var (
 	MaxAccInMultiCache     = "multi-cache-acc"
 	MaxStorageInMultiCache = "multi-cache-storage"
 	UseCache               bool
+
+	EnableMultiCache = false
 )
 
 type account interface {

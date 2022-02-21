@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/libs/tendermint/global"
 	"github.com/okex/exchain/libs/tendermint/libs/automation"
 	"time"
@@ -429,7 +430,11 @@ func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
 		return nil, err
 	}
 
-	proxyAppConn.ParallelTxs(transTxsToBytes(block.Txs), true)
+	fmt.Println("sdk.EnableMultiCache", sdk.EnableMultiCache)
+	if sdk.EnableMultiCache {
+		proxyAppConn.ParallelTxs(transTxsToBytes(block.Txs), true)
+	}
+
 	// Run txs of block.
 	for count, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
