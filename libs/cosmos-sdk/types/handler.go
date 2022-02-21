@@ -1,5 +1,7 @@
 package types
 
+import "sync"
+
 // Handler defines the core of the state transition function of an application.
 type Handler func(ctx Context, msg Msg) (*Result, error)
 
@@ -14,6 +16,7 @@ type AccHandler func(ctx Context, address AccAddress) (nonce uint64)
 type UpdateFeeCollectorAccHandler func(ctx Context, balance Coins) error
 
 type LogFix func(isAnteFailed [][]string) (logs [][]byte)
+type PreLoadSender func(ctx Context, addr AccAddress, mu *sync.Mutex)
 
 type GetTxFeeHandler func(ctx Context, tx Tx) (Coins, bool, SigCache)
 

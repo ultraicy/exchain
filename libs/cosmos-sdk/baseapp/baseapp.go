@@ -143,6 +143,7 @@ type BaseApp struct { // nolint: maligned
 	getTxFee                     sdk.GetTxFeeHandler
 	updateFeeCollectorAccHandler sdk.UpdateFeeCollectorAccHandler
 	logFix                       sdk.LogFix
+	preLoad                      sdk.PreLoadSender
 
 	// volatile states:
 	//

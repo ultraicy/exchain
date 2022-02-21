@@ -42,7 +42,7 @@ func (ak AccountKeeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) exporte
 		ctx.Cache().UpdateAccount(addr, nil, len(bz), false)
 		return nil
 	}
-	acc := ak.decodeAccount(bz)
+	acc := ak.DecodeAccount(bz)
 	ctx.Cache().UpdateAccount(addr, acc, len(bz), false)
 	return acc
 }
@@ -98,7 +98,7 @@ func (ak AccountKeeper) IterateAccounts(ctx sdk.Context, cb func(account exporte
 
 	defer iterator.Close()
 	for ; iterator.Valid(); iterator.Next() {
-		account := ak.decodeAccount(iterator.Value())
+		account := ak.DecodeAccount(iterator.Value())
 
 		if cb(account) {
 			break

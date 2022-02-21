@@ -208,6 +208,7 @@ func (app *BaseApp) runTx_defer_recover(r interface{}, info *runTxInfo) error {
 		)
 
 	default:
+		fmt.Println("fuck---")
 		err = sdkerrors.Wrap(
 			sdkerrors.ErrPanic, fmt.Sprintf(
 				"recovered: %v\nstack:\n%v", r, string(debug.Stack()),
@@ -267,6 +268,7 @@ func writeCache(cache sdk.CacheMultiStore, ctx sdk.Context) {
 	cache.Write()
 }
 
+//TODO delete!!!!
 func (app *BaseApp) newBlockCache() {
 	app.blockCache = sdk.NewCache(app.chainCache, useCache(runTxModeDeliver))
 	app.deliverState.ctx = app.deliverState.ctx.WithCache(app.blockCache)

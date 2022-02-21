@@ -36,6 +36,10 @@ func getRealTxByte(txByteWithIndex []byte) []byte {
 }
 
 func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
+	app.blockCache = sdk.NewCache(app.chainCache, useCache(runTxModeDeliver))
+	ms := app.cms.CacheMultiStore()
+	preLoadCtx := app.checkState.ctx.WithMultiStore(ms).WithCache(app.blockCache)
+	var mu sync.Mutex
 	txSize := len(txs)
 
 	res := make([]*extraDataForTx, txSize, txSize)
@@ -49,7 +53,7 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 	stopChan := make(chan struct{}, 1)
 
 	poolChan := make(chan struct{}, maxGoRoutine)
-
+	fmt.Println("useCache", sdk.UseCache)
 	for index, txBytes := range txs {
 		poolChan <- struct{}{}
 		index := index
@@ -75,10 +79,14 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 				isEvm:     isEvm,
 				signCache: s,
 			}
+			if isEvm && sdk.UseCache {
+				app.preLoad(preLoadCtx, s.GetFrom().Bytes(), &mu)
+			}
+
 		}()
 	}
 	<-stopChan
-
+	fmt.Println("--", app.blockCache.AccountSize())
 	return res
 }
 
