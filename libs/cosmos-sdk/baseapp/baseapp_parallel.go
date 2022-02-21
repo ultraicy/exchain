@@ -37,9 +37,9 @@ func getRealTxByte(txByteWithIndex []byte) []byte {
 
 func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 	app.blockCache = sdk.NewCache(app.chainCache, useCache(runTxModeDeliver))
-	ms := app.cms.CacheMultiStore()
-	preLoadCtx := app.checkState.ctx.WithMultiStore(ms).WithCache(app.blockCache)
-	var mu sync.Mutex
+	//ms := app.cms.CacheMultiStore()
+	//preLoadCtx := app.checkState.ctx.WithMultiStore(ms).WithCache(app.blockCache)
+	//var mu sync.Mutex
 	txSize := len(txs)
 
 	res := make([]*extraDataForTx, txSize, txSize)
@@ -79,9 +79,9 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 				isEvm:     isEvm,
 				signCache: s,
 			}
-			if isEvm && sdk.UseCache {
-				app.preLoad(preLoadCtx, s.GetFrom().Bytes(), &mu)
-			}
+			//if isEvm && sdk.UseCache {
+			//	app.preLoad(preLoadCtx, s.GetFrom().Bytes(), &mu)
+			//}
 
 		}()
 	}
