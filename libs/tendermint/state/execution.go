@@ -415,9 +415,9 @@ func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	fmt.Println("EnableParaSender", EnableParaSender)
-	if EnableParaSender {
-		proxyAppConn.ParallelTxs(transTxsToBytes(block.Txs), true)
-	}
+	//if EnableParaSender {
+	proxyAppConn.ParallelTxs(transTxsToBytes(block.Txs), true)
+	//}
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
 
