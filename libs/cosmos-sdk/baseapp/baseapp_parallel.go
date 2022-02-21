@@ -90,8 +90,6 @@ func (app *BaseApp) ParallelTxs(txs [][]byte, onlyCalSender bool) []*abci.Respon
 		for i, v := range extraData {
 			if v != nil {
 				app.parallelTxManage.SetTxSignCache(txs[i], v.signCache)
-			} else {
-				fmt.Println("fakseIndex", i)
 			}
 		}
 		return nil
@@ -265,36 +263,6 @@ func (app *BaseApp) deliverTxWithCache(txByte []byte) *executeResult {
 	return asyncExe
 }
 
-func (app *BaseApp) ParserBlockTxsSender(txs [][]byte) {
-	go func() {
-		if len(txs) < 20 {
-			return
-		}
-
-		paraManager := app.parallelTxManage
-		paraManager.ClearSignCache()
-		poolChan := make(chan struct{}, 64)
-		for _, tx := range txs {
-			poolChan <- struct{}{}
-
-			go func(tx []byte) {
-				defer func() {
-					<-poolChan
-				}()
-				cmstx, err := app.txDecoder(tx)
-				if err != nil {
-					return
-				}
-				_, _, signerCache := app.getTxFee(app.checkState.ctx, cmstx)
-
-				if signerCache != nil {
-					paraManager.SetTxSignCache(tx, signerCache)
-				}
-			}(tx)
-		}
-	}()
-}
-
 type executeResult struct {
 	resp       abci.ResponseDeliverTx
 	ms         sdk.CacheMultiStore
@@ -405,7 +373,6 @@ type parallelTxManager struct {
 
 	currTxFee sdk.Coins
 
-	//blockTxSenderLock sync.RWMutex
 	blockTxSender map[string]sdk.SigCache
 }
 
@@ -476,20 +443,14 @@ func (f *parallelTxManager) GetTxSignCache(tx []byte) sdk.SigCache {
 	if !sm.EnableParaSender {
 		return nil
 	}
-	//f.blockTxSenderLock.RLock()
-	//defer f.blockTxSenderLock.RUnlock()
 	return f.blockTxSender[string(tx)]
 }
 
 func (f *parallelTxManager) SetTxSignCache(tx []byte, s sdk.SigCache) {
-	//f.blockTxSenderLock.Lock()
-	//defer f.blockTxSenderLock.Unlock()
 	f.blockTxSender[string(tx)] = s
 }
 
 func (f *parallelTxManager) ClearSignCache() {
-	//f.blockTxSenderLock.Lock()
-	//defer f.blockTxSenderLock.Unlock()
 	f.blockTxSender = make(map[string]sdk.SigCache)
 }
 
