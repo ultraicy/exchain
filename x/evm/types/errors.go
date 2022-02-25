@@ -62,6 +62,8 @@ var (
 	ErrorHexData = "HexData"
 
 	ErrorContractMethodBlockedIsNotExist = errors.New("it's not exist in contract method blocked list")
+
+	ErrUndefinedOwner = sdkerrors.Register(ModuleName, 20, "undefined owner of contract pair")
 )
 
 const (

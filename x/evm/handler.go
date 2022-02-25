@@ -1,6 +1,8 @@
 package evm
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/okex/exchain/app/refund"
 	ethermint "github.com/okex/exchain/app/types"
@@ -14,7 +16,6 @@ import (
 	"github.com/okex/exchain/x/evm/keeper"
 	"github.com/okex/exchain/x/evm/types"
 	"github.com/okex/exchain/x/evm/watcher"
-	"math/big"
 )
 
 // NewHandler returns a handler for Ethermint type messages.
@@ -63,17 +64,17 @@ func NewHandler(k *Keeper) sdk.Handler {
 			}
 		}()
 
-		evmtx, ok := msg.(types.MsgEthereumTx)
-		if ok {
-			result, err = handleMsgEthereumTx(ctx, k, &evmtx)
-			if err != nil {
-				err = sdkerrors.New(types.ModuleName, types.CodeSpaceEvmCallFailed, err.Error())
-			}
-		} else {
+		switch msg := msg.(type) {
+		case types.MsgEthereumTx:
+			return handleMsgEthereumTx(ctx, k, &msg)
+		case types.MsgConvertCoin:
+			return handleMsgConvertCoin(ctx, &msg, k)
+		case types.MsgConvertERC20:
+			return handleMsgConvertERC20(ctx, &msg, k)
+		default:
 			err = sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized %s message type: %T", ModuleName, msg)
+			return result, err
 		}
-
-		return result, err
 	}
 }
 
@@ -288,4 +289,30 @@ func msg2st(ctx *sdk.Context, k *Keeper, msg *types.MsgEthereumTx) (st types.Sta
 	}
 
 	return
+}
+
+// handleMsgConvertCoin converts OEC-native Coins into ERC20 tokens
+func handleMsgConvertCoin(ctx sdk.Context, msg *types.MsgConvertCoin, k *Keeper) (*sdk.Result, error) {
+	receiver := common.HexToAddress(msg.Receiver)
+	sender, _ := sdk.AccAddressFromBech32(msg.Sender)
+
+	//TODO check coin/sender/receiver  10<--->20 pair
+
+	pair, err := k.GetTokenPair(ctx, msg.Coin.Denom)
+	if err != nil {
+		return nil, err
+	}
+	switch pair.ContractOwner {
+	case types.OwnerModule:
+		return k.ConvertCoin4NativeCoin(ctx, pair, msg, receiver, sender)
+	case types.OwnerExternal:
+		return k.ConvertCoin4NativeERC20(ctx, pair, msg, receiver, sender)
+	default:
+		return nil, types.ErrUndefinedOwner
+	}
+}
+
+// handleMsgConvertERC20 converts ERC20 tokens into OEC-native Coins
+func handleMsgConvertERC20(ctx sdk.Context, msg *types.MsgConvertERC20, k *Keeper) (*sdk.Result, error) {
+	return nil, nil
 }
