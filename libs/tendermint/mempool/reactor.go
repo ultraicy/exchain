@@ -298,7 +298,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 				}
 			}
 
-			success := peer.Send(MempoolChannel, memR.encodeMsg(msg))
+			success := peer.Send(MempoolChannel, cdc.MustMarshalBinaryBare(msg))
 			if !success {
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 				continue
