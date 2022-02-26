@@ -18,6 +18,8 @@ const (
 	int64Size      = 8
 	hashSize       = tmhash.Size
 	genesisVersion = 1
+
+	iavlCacheShardedNum = 256
 )
 
 var (
@@ -44,9 +46,9 @@ type nodeDB struct {
 	versionReaders map[int64]uint32 // Number of active version readers
 
 	latestVersion  int64
-	nodeCache      map[string]*list.Element // Node cache.
-	nodeCacheSize  int                      // Node cache size limit in elements.
-	nodeCacheQueue *syncList                // LRU queue of cache elements. Used for deletion.
+	nodeCache      [iavlCacheShardedNum]map[string]*list.Element // Node cache.
+	nodeCacheSize  int                                           // Node cache size limit in elements.
+	nodeCacheQueue *syncList                                     // LRU queue of cache elements. Used for deletion.
 
 	orphanNodeCache         map[string]*Node
 	heightOrphansCacheQueue *list.List
@@ -75,11 +77,11 @@ func newNodeDB(db dbm.DB, cacheSize int, opts *Options) *nodeDB {
 		o := DefaultOptions()
 		opts = &o
 	}
-	return &nodeDB{
-		db:                      db,
-		opts:                    *opts,
-		latestVersion:           0, // initially invalid
-		nodeCache:               make(map[string]*list.Element),
+	ndb := &nodeDB{
+		db:            db,
+		opts:          *opts,
+		latestVersion: 0, // initially invalid
+		// nodeCache:               make(map[string]*list.Element),
 		nodeCacheSize:           cacheSize,
 		nodeCacheQueue:          newSyncList(),
 		versionReaders:          make(map[int64]uint32, 8),
@@ -94,6 +96,15 @@ func newNodeDB(db dbm.DB, cacheSize int, opts *Options) *nodeDB {
 		dbReadTime:              0,
 		dbWriteCount:            0,
 		name:                    ParseDBName(db),
+	}
+	ndb.initCache(cacheSize)
+	return ndb
+}
+
+func (ndb *nodeDB) initCache(cacheSize int) {
+	mcap := cacheSize / iavlCacheShardedNum
+	for i := 0; i < iavlCacheShardedNum; i++ {
+		ndb.nodeCache[i] = make(map[string]*list.Element, mcap+1)
 	}
 }
 
@@ -521,8 +532,13 @@ func (ndb *nodeDB) cachedNodeSize() int {
 	return len(ndb.nodeCache)
 }
 
+func (ndb *nodeDB) getCacheShard(hash []byte) map[string]*list.Element {
+	return ndb.nodeCache[hash[0]]
+}
+
 func (ndb *nodeDB) getCachedNode(hash []byte) (*Node, bool) {
-	if elem, ok := ndb.nodeCache[string(hash)]; ok {
+	nodeCache := ndb.getCacheShard(hash)
+	if elem, ok := nodeCache[string(hash)]; ok {
 		// Already exists. Move to back of nodeCacheQueue.
 		ndb.nodeCacheQueue.MoveToBack(elem)
 		return elem.Value.(*Node), true
@@ -531,9 +547,10 @@ func (ndb *nodeDB) getCachedNode(hash []byte) (*Node, bool) {
 }
 
 func (ndb *nodeDB) uncacheNode(hash []byte) {
-	if elem, ok := ndb.nodeCache[string(hash)]; ok {
+	nodeCache := ndb.getCacheShard(hash)
+	if elem, ok := nodeCache[string(hash)]; ok {
 		ndb.nodeCacheQueue.Remove(elem)
-		delete(ndb.nodeCache, string(hash))
+		delete(nodeCache, string(hash))
 	}
 }
 
@@ -541,17 +558,19 @@ func (ndb *nodeDB) uncacheNode(hash []byte) {
 // reached the cache size limit.
 func (ndb *nodeDB) cacheNode(node *Node) {
 	elem := ndb.nodeCacheQueue.PushBack(node)
-	ndb.nodeCache[string(node.hash)] = elem
+	nodeCache := ndb.getCacheShard(node.hash)
+	nodeCache[string(node.hash)] = elem
 
 	for ndb.nodeCacheQueue.Len() > config.DynamicConfig.GetIavlCacheSize() {
 		oldest := ndb.nodeCacheQueue.Front()
 		hash := ndb.nodeCacheQueue.Remove(oldest).(*Node).hash
-		delete(ndb.nodeCache, string(hash))
+		delete(nodeCache, string(hash))
 	}
 }
 
 func (ndb *nodeDB) cacheNodeByCheck(node *Node) {
-	if _, ok := ndb.nodeCache[string(node.hash)]; !ok {
+	nodeCache := ndb.getCacheShard(node.hash)
+	if _, ok := nodeCache[string(node.hash)]; !ok {
 		ndb.cacheNode(node)
 	}
 }
