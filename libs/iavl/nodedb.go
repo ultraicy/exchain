@@ -117,10 +117,8 @@ func (ndb *nodeDB) GetNode(hash []byte) *Node {
 			return elem
 		}
 		// Check the cache.
-		if elem, ok := ndb.nodeCache[string(hash)]; ok {
-			// Already exists. Move to back of nodeCacheQueue.
-			ndb.nodeCacheQueue.MoveToBack(elem)
-			return elem.Value.(*Node)
+		if elem, ok := ndb.getCachedNode(hash); ok {
+			return elem
 		}
 		if elem, ok := ndb.orphanNodeCache[string(hash)]; ok {
 			return elem
@@ -517,6 +515,19 @@ func (ndb *nodeDB) traversePrefix(prefix []byte, fn func(k, v []byte)) {
 	for ; itr.Valid(); itr.Next() {
 		fn(itr.Key(), itr.Value())
 	}
+}
+
+func (ndb *nodeDB) cachedNodeSize() int {
+	return len(ndb.nodeCache)
+}
+
+func (ndb *nodeDB) getCachedNode(hash []byte) (*Node, bool) {
+	if elem, ok := ndb.nodeCache[string(hash)]; ok {
+		// Already exists. Move to back of nodeCacheQueue.
+		ndb.nodeCacheQueue.MoveToBack(elem)
+		return elem.Value.(*Node), true
+	}
+	return nil, false
 }
 
 func (ndb *nodeDB) uncacheNode(hash []byte) {
