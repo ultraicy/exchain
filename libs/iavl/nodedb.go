@@ -19,7 +19,7 @@ const (
 	hashSize       = tmhash.Size
 	genesisVersion = 1
 
-	iavlCacheShardedNum = 256
+	iavlCacheShardedNum = 1024
 )
 
 var (
@@ -533,7 +533,7 @@ func (ndb *nodeDB) cachedNodeSize() int {
 }
 
 func (ndb *nodeDB) getCacheShard(hash []byte) map[string]*list.Element {
-	return ndb.nodeCache[hash[0]]
+	return ndb.nodeCache[int(hash[0])|(int(hash[1]&0x03)<<8)]
 }
 
 func (ndb *nodeDB) getCachedNode(hash []byte) (*Node, bool) {
