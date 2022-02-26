@@ -529,7 +529,11 @@ func (ndb *nodeDB) traversePrefix(prefix []byte, fn func(k, v []byte)) {
 }
 
 func (ndb *nodeDB) cachedNodeSize() int {
-	return len(ndb.nodeCache)
+	l := 0
+	for _, n := range ndb.nodeCache {
+		l += len(n)
+	}
+	return l
 }
 
 func (ndb *nodeDB) getCacheShard(hash []byte) map[string]*list.Element {
