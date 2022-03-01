@@ -90,7 +90,12 @@ func (store *Store) Set(key []byte, value []byte) {
 	types.AssertValidKey(key)
 	types.AssertValidValue(value)
 
-	store.setCacheValue(key, value, false, true)
+	isDirty := false
+	if !bytes.Equal(store.parent.Get(key), value) {
+		isDirty = true
+	}
+
+	store.setCacheValue(key, value, false, isDirty)
 }
 
 // Implements types.KVStore.
