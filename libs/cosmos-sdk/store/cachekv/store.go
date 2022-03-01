@@ -138,9 +138,9 @@ func (store *Store) Write() {
 		if dbValue.dirty {
 			if sdk.SBFLAG {
 				ts := time.Now()
-				dirty := bytes.Equal(store.parent.Get([]byte(key)), dbValue.value)
+				equal := bytes.Equal(store.parent.Get([]byte(key)), dbValue.value)
 				sdk.TT += time.Now().Sub(ts)
-				if !dirty {
+				if equal {
 					sb++
 				} else {
 					keys = append(keys, key)
