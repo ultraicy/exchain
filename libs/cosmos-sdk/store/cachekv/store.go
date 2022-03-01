@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 	"sync"
+	"time"
 	"unsafe"
 
 	tmkv "github.com/okex/exchain/libs/tendermint/libs/kv"
@@ -136,7 +137,10 @@ func (store *Store) Write() {
 	for key, dbValue := range store.cache {
 		if dbValue.dirty {
 			if sdk.SBFLAG {
-				if bytes.Equal(store.parent.Get([]byte(key)), dbValue.value) {
+				ts := time.Now()
+				dirty := bytes.Equal(store.parent.Get([]byte(key)), dbValue.value)
+				sdk.TT += time.Now().Sub(ts)
+				if !dirty {
 					sb++
 				} else {
 					keys = append(keys, key)
