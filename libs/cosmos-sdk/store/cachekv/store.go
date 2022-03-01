@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"sort"
 	"sync"
-	"time"
 	"unsafe"
 
 	tmkv "github.com/okex/exchain/libs/tendermint/libs/kv"
@@ -92,14 +91,14 @@ func (store *Store) Set(key []byte, value []byte) {
 	types.AssertValidKey(key)
 	types.AssertValidValue(value)
 
-	ts := time.Now()
-	isDirty := false
-	if !bytes.Equal(store.parent.Get(key), value) {
-		isDirty = true
-	}
-
-	sdk.TT += time.Now().Sub(ts)
-
+	//ts := time.Now()
+	//isDirty := false
+	//if !bytes.Equal(store.parent.Get(key), value) {
+	//	isDirty = true
+	//}
+	//
+	//sdk.TT += time.Now().Sub(ts)
+	isDirty := true
 	store.setCacheValue(key, value, false, isDirty)
 }
 
@@ -115,12 +114,13 @@ func (store *Store) Delete(key []byte) {
 	defer store.mtx.Unlock()
 
 	types.AssertValidKey(key)
-	ts := time.Now()
-	isDirty := false
-	if len(store.parent.Get(key)) != 0 {
-		isDirty = true
-	}
-	sdk.TT += time.Now().Sub(ts)
+	//ts := time.Now()
+	//isDirty := false
+	//if len(store.parent.Get(key)) != 0 {
+	//	isDirty = true
+	//}
+	//sdk.TT += time.Now().Sub(ts)
+	isDirty := true
 	store.setCacheValue(key, nil, true, isDirty)
 }
 
@@ -131,10 +131,19 @@ func (store *Store) Write() {
 
 	// We need a copy of all of the keys.
 	// Not the best, but probably not a bottleneck depending.
+	sb := 0
 	keys := make([]string, 0, len(store.cache))
 	for key, dbValue := range store.cache {
 		if dbValue.dirty {
-			keys = append(keys, key)
+			if sdk.SBFLAG {
+				if bytes.Equal(store.parent.Get([]byte(key)), dbValue.value) {
+					sb++
+				} else {
+					keys = append(keys, key)
+				}
+			} else {
+				keys = append(keys, key)
+			}
 		}
 	}
 

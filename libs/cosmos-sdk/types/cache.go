@@ -21,7 +21,8 @@ var (
 	MaxStorageInMultiCache = "multi-cache-storage"
 	UseCache               bool
 
-	TT = time.Duration(0)
+	TT     = time.Duration(0)
+	SBFLAG = false
 )
 
 type account interface {
