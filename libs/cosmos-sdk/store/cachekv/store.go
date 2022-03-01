@@ -110,8 +110,11 @@ func (store *Store) Delete(key []byte) {
 	defer store.mtx.Unlock()
 
 	types.AssertValidKey(key)
-
-	store.setCacheValue(key, nil, true, true)
+	isDirty := false
+	if len(store.parent.Get(key)) != 0 {
+		isDirty = true
+	}
+	store.setCacheValue(key, nil, true, isDirty)
 }
 
 // Implements Cachetypes.KVStore.
