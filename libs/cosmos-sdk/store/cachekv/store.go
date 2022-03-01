@@ -3,10 +3,12 @@ package cachekv
 import (
 	"bytes"
 	"container/list"
+	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"io"
 	"reflect"
 	"sort"
 	"sync"
+	"time"
 	"unsafe"
 
 	tmkv "github.com/okex/exchain/libs/tendermint/libs/kv"
@@ -90,10 +92,13 @@ func (store *Store) Set(key []byte, value []byte) {
 	types.AssertValidKey(key)
 	types.AssertValidValue(value)
 
+	ts := time.Now()
 	isDirty := false
 	if !bytes.Equal(store.parent.Get(key), value) {
 		isDirty = true
 	}
+
+	sdk.TT += time.Now().Sub(ts)
 
 	store.setCacheValue(key, value, false, isDirty)
 }
@@ -110,10 +115,12 @@ func (store *Store) Delete(key []byte) {
 	defer store.mtx.Unlock()
 
 	types.AssertValidKey(key)
+	ts := time.Now()
 	isDirty := false
 	if len(store.parent.Get(key)) != 0 {
 		isDirty = true
 	}
+	sdk.TT += time.Now().Sub(ts)
 	store.setCacheValue(key, nil, true, isDirty)
 }
 
