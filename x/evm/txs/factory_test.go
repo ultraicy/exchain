@@ -1,6 +1,7 @@
 package txs
 
 import (
+	"fmt"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/x/evm/txs/base"
 	"github.com/okex/exchain/x/evm/txs/check"
@@ -43,4 +44,28 @@ func Test_factory_CreateTx(t *testing.T) {
 			}
 		})
 	}
+}
+
+
+func Test_factory_CreateTx2(t *testing.T) {
+
+	err := test()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
+func test() (err error) {
+
+	defer func() {
+
+		err := fmt.Errorf("xxx")
+		if err != nil {
+			return
+		}
+
+		err = fmt.Errorf("xxx2")
+	}()
+
+	return
 }

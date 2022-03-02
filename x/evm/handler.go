@@ -31,7 +31,7 @@ func NewHandler(k *Keeper) sdk.Handler {
 }
 
 
-func hgu(ctx *sdk.Context, tx *types.MsgEthereumTx) (err error) {
+func hgu(gc int64, tx *types.MsgEthereumTx) (err error) {
 	if cfg.DynamicConfig.GetMaxGasUsedPerBlock() < 0 {
 		return
 	}
@@ -49,7 +49,6 @@ func hgu(ctx *sdk.Context, tx *types.MsgEthereumTx) (err error) {
 		return
 	}
 
-	gc := int64(ctx.GasMeter().GasConsumed())
 	if toDeployContractSize > 0 {
 		// calculate average gas consume for deploy contract case
 		gc = gc / int64(toDeployContractSize)
@@ -78,7 +77,7 @@ func handleMsgEthereumTx(ctx sdk.Context, k *Keeper, msg *types.MsgEthereumTx) (
 	}
 
 	if err == nil {
-		hgu(&ctx, msg)
+		hgu(int64(ctx.GasMeter().GasConsumed()), msg)
 	}
 
 	return res, err
