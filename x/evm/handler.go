@@ -3,10 +3,6 @@ package evm
 import (
 	"github.com/okex/exchain/x/evm/txs"
 	"github.com/okex/exchain/x/evm/txs/base"
-	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
-	ethermint "github.com/okex/exchain/app/types"
 
 	bam "github.com/okex/exchain/libs/cosmos-sdk/baseapp"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
