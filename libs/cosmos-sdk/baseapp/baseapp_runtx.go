@@ -162,7 +162,7 @@ func (app *BaseApp) runAnte(info *runTxInfo, mode runTxMode) error {
 	info.gasWanted = info.ctx.GasMeter().Limit()
 
 	if mode == runTxModeDeliverInAsync {
-		app.parallelTxManage.txStatus[string(info.txBytes)].anteErr = err
+		app.parallelTxManage.setAnteErr(string(info.txBytes), err)
 	}
 
 	if err != nil {
@@ -228,22 +228,27 @@ func (app *BaseApp) runTx_defer_recover(r interface{}, info *runTxInfo) error {
 				"recovered: %v\nstack:\n%v", r, string(debug.Stack()),
 			),
 		)
+		//fmt.Println("fake------", err)
 	}
 	return err
 }
 
 func (app *BaseApp) asyncDeliverTx(txWithIndex []byte, index int) {
+	txString := string(txWithIndex)
 
-	txStatus := app.parallelTxManage.txStatus[string(txWithIndex)]
+	txStatus := app.parallelTxManage.txStatus[txString]
 	tx, err := app.txDecoder(getRealTxByte(txWithIndex))
 	if err != nil {
-		asyncExe := newExecuteResult(sdkerrors.ResponseDeliverTx(err, 0, 0, app.trace), nil, txStatus.indexInBlock, txStatus.evmIndex)
+		asyncExe := newExecuteResult(sdkerrors.ResponseDeliverTx(err, 0, 0, app.trace), nil, txStatus.indexInBlock, sdk.Coins{}, nil, -1)
 		app.parallelTxManage.workgroup.Push(asyncExe)
+		return
+	}
+	if txStatus == nil {
 		return
 	}
 
 	if !txStatus.isEvmTx {
-		asyncExe := newExecuteResult(abci.ResponseDeliverTx{}, nil, txStatus.indexInBlock, txStatus.evmIndex)
+		asyncExe := newExecuteResult(abci.ResponseDeliverTx{}, nil, txStatus.indexInBlock, sdk.Coins{}, nil, -1)
 		app.parallelTxManage.workgroup.Push(asyncExe)
 		return
 	}
@@ -262,8 +267,8 @@ func (app *BaseApp) asyncDeliverTx(txWithIndex []byte, index int) {
 		}
 	}
 
-	asyncExe := newExecuteResult(resp, m, txStatus.indexInBlock, txStatus.evmIndex)
-	asyncExe.err = e
+	_, resultID := app.logFix(nil, getRealTxByte(txWithIndex))
+	asyncExe := newExecuteResult(resp, m, txStatus.indexInBlock, app.parallelTxManage.getRefundFee(txString), app.parallelTxManage.getAnteErr(txString), resultID)
 	app.parallelTxManage.workgroup.Push(asyncExe)
 }
 

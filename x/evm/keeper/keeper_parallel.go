@@ -1,67 +1,86 @@
 package keeper
 
 import (
+	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"math/big"
 	"sync"
 
 	"github.com/okex/exchain/x/evm/types"
 )
 
-func (k *Keeper) FixLog(execResults [][]string) [][]byte {
-	res := make([][]byte, len(execResults), len(execResults))
+func (k *Keeper) FixLog(txsInfo []*sdk.ParaTxInfo) [][]byte {
+
+	txSize := len(txsInfo)
+
+	res := make([][]byte, txSize, txSize)
 	logSize := uint(0)
-	txInBlock := int(-1)
+	txInBlock := -1
 	k.Bloom = new(big.Int)
 
-	for index := 0; index < len(execResults); index++ {
-		rs, ok := k.LogsManages.Get(execResults[index][0])
-		if !ok || execResults[index][1] != "" {
-			continue
-		}
-		txInBlock++
-		if rs.ResultData == nil {
+	for index, info := range txsInfo {
+		if info.AnteErr != nil {
+			//fmt.Println("zzzzz-1", index, info.AnteErr)
 			continue
 		}
 
-		for _, v := range rs.ResultData.Logs {
+		rs, ok := k.LogsManages.Results[info.ResultID]
+		if !ok {
+			//fmt.Println("zzzzz-2", index, ok, info.ResultID)
+			continue
+		}
+
+		txInBlock++
+		if rs == nil {
+			//fmt.Println("zzzzz-3", index)
+			continue
+		}
+
+		for _, v := range rs.Logs {
 			v.Index = logSize
 			v.TxIndex = uint(txInBlock)
 			logSize++
 		}
 
-		k.Bloom = k.Bloom.Or(k.Bloom, rs.ResultData.Bloom.Big())
-		data, err := types.EncodeResultData(*rs.ResultData)
+		//fmt.Println("bloom", index, ethcommon.BytesToHash(rs.Bloom.Bytes()).String())
+		k.Bloom = k.Bloom.Or(k.Bloom, rs.Bloom.Big())
+		data, err := types.EncodeResultData(*rs)
 		if err != nil {
 			panic(err)
 		}
 		res[index] = data
 	}
-	k.LogsManages.Reset()
 	return res
 }
 
 type LogsManager struct {
-	mu      sync.RWMutex
-	Results map[string]TxResult
+	cnt int
+
+	mu         sync.RWMutex
+	txMapIndex map[string]int
+	Results    map[int]*types.ResultData
 }
 
 func NewLogManager() *LogsManager {
 	return &LogsManager{
-		mu:      sync.RWMutex{},
-		Results: make(map[string]TxResult),
+		mu:         sync.RWMutex{},
+		txMapIndex: make(map[string]int, 0),
+		Results:    make(map[int]*types.ResultData),
 	}
 }
 
-func (l *LogsManager) Set(txBytes string, value TxResult) {
+func (l *LogsManager) Set(txBytes string, value *types.ResultData) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.Results[txBytes] = value
+	l.txMapIndex[txBytes] = l.cnt
+	l.Results[l.cnt] = value
+	l.cnt++
 }
 
-func (l *LogsManager) Get(txBytes string) (TxResult, bool) {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-	data, ok := l.Results[txBytes]
+func (l *LogsManager) GetResultID(txBytes string) (int, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	data, ok := l.txMapIndex[txBytes]
+	delete(l.txMapIndex, txBytes)
 	return data, ok
 }
 
@@ -72,10 +91,8 @@ func (l *LogsManager) Len() int {
 }
 
 func (l *LogsManager) Reset() {
-	l.Results = make(map[string]TxResult)
-}
-
-type TxResult struct {
-	ResultData *types.ResultData
-	Err        error
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.txMapIndex = make(map[string]int)
+	l.Results = make(map[int]*types.ResultData)
 }
