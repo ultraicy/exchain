@@ -88,7 +88,6 @@ func NewKeeper(
 		Ada:           types.DefaultPrefixDb{},
 
 		innerBlockData: defaultBlockInnerData(),
-		LogsManages:    NewLogManager(),
 	}
 	k.Watcher.SetWatchDataFunc()
 	if k.Watcher.Enabled() {

@@ -38,6 +38,7 @@ func (k *Keeper) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
 	k.Bloom = big.NewInt(0)
 	k.TxCount = 0
 	k.LogSize = 0
+	k.LogsManages = NewLogManager()
 	k.Bhash = common.BytesToHash(currentHash)
 
 	//that can make sure latest block has been committed
@@ -104,7 +105,6 @@ func (k Keeper) EndBlock(ctx sdk.Context, req abci.RequestEndBlock) []abci.Valid
 	}
 
 	k.UpdateInnerBlockData()
-	k.LogsManages.Reset()
 
 	return []abci.ValidatorUpdate{}
 }
