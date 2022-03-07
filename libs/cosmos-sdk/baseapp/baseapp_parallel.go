@@ -177,7 +177,6 @@ func (app *BaseApp) ParallelTxs(txs [][]byte) []*abci.ResponseDeliverTx {
 	}
 
 	sdk.AddPrePare(time.Now().Sub(ts))
-	//fmt.Println("calGroupTime", time.Now().Sub(ts).Milliseconds())
 	return app.runTxs(txWithIndex, groupList, nextIndexInGroup)
 
 }
@@ -206,7 +205,7 @@ func (app *BaseApp) fixFeeCollector(txs [][]byte, ms sdk.CacheMultiStore) {
 
 func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup map[int]int) []*abci.ResponseDeliverTx {
 	ts := time.Now()
-	fmt.Println("detail", app.deliverState.ctx.BlockHeight(), "len(group)", len(groupList))
+	//fmt.Println("detail", app.deliverState.ctx.BlockHeight())
 	//for index := 0; index < len(groupList); index++ {
 	//	fmt.Println("groupIndex", index, "groupSize", len(groupList[index]), "list", groupList[index])
 	//}
@@ -237,7 +236,7 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 		}()
 
 		receiveTxIndex := int(execRes.GetCounter())
-		fmt.Println("ReceiveTx", receiveTxIndex)
+		//fmt.Println("ReceiveTx", receiveTxIndex)
 		pm.workgroup.setTxStatus(receiveTxIndex, false)
 		if receiveTxIndex < txIndex {
 			return
@@ -246,14 +245,14 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 
 		if pm.isFailed(pm.workgroup.runningStats(receiveTxIndex)) {
 			txReps[receiveTxIndex] = nil
-			fmt.Println("RRRRRR", "mark failed", receiveTxIndex)
+			//fmt.Println("RRRRRR", "mark failed", receiveTxIndex)
 			pm.workgroup.AddTask(txs[receiveTxIndex], receiveTxIndex)
 
 		} else {
 			if nextTx, ok := nextTxInGroup[receiveTxIndex]; ok {
 				if !pm.workgroup.isRunning(nextTx) {
 					txReps[nextTx] = nil
-					fmt.Println("RRRRRR", "run nextInGroup", nextTx)
+					//fmt.Println("RRRRRR", "run nextInGroup", nextTx)
 					pm.workgroup.AddTask(txs[nextTx], nextTx)
 				}
 			}
@@ -268,7 +267,7 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 			res := txReps[txIndex]
 
 			if res.Conflict(pm.cms) || overFlow(currentGas, res.resp.GasUsed, maxGas) {
-				fmt.Println("Chongtu", txIndex)
+				//fmt.Println("Chongtu", txIndex)
 				if pm.workgroup.isRunning(txIndex) {
 					runningTaskID := pm.workgroup.runningStats(txIndex)
 					pm.markFailed(runningTaskID)
@@ -293,7 +292,7 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 
 						if !pm.workgroup.isRunning(nn) {
 							txReps[nn] = nil
-							fmt.Println("RRRRRR", "conflict->rerun->nextTxInGroup", nn)
+							//fmt.Println("RRRRRR", "conflict->rerun->nextTxInGroup", nn)
 							pm.workgroup.AddTask(txs[nn], nn)
 						} else {
 							runningTaskID := pm.workgroup.runningStats(nn)
@@ -315,17 +314,17 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 			}
 
 			pm.SetCurrentIndex(txIndex, res) //Commit
-			fmt.Println("SetCurrentIndex", txIndex)
+			//fmt.Println("SetCurrentIndex", txIndex)
 			currentGas += uint64(res.resp.GasUsed)
 			txIndex++
 			if txIndex == len(txs) {
 				ParaLog.Update(uint64(app.deliverState.ctx.BlockHeight()), len(txs), rerunIdx)
-				app.logger.Info("Paralleled-tx", "blockHeight", app.deliverState.ctx.BlockHeight(), "len(txs)", len(txs), "Parallel run", len(txs)-rerunIdx, "ReRun", rerunIdx)
+				app.logger.Info("Paralleled-tx", "blockHeight", app.deliverState.ctx.BlockHeight(), "len(txs)", len(txs), "Parallel run", len(txs)-rerunIdx, "ReRun", rerunIdx, "len(group)", len(groupList))
 				signal <- 0
 				return
 			}
 			if txReps[txIndex] == nil && !pm.workgroup.isRunning(txIndex) {
-				fmt.Println("RRRRRR", "merge end", txIndex)
+				//fmt.Println("RRRRRR", "merge end", txIndex)
 				pm.workgroup.AddTask(txs[txIndex], txIndex)
 			}
 
@@ -340,7 +339,6 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 	}
 	for _, group := range groupList {
 		txIndex := group[0]
-		fmt.Println("RRRRRR", "fist in group", txIndex)
 		pm.workgroup.AddTask(txs[txIndex], txIndex)
 	}
 
