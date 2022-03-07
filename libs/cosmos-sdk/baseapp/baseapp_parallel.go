@@ -206,10 +206,10 @@ func (app *BaseApp) fixFeeCollector(txs [][]byte, ms sdk.CacheMultiStore) {
 
 func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup map[int]int) []*abci.ResponseDeliverTx {
 	ts := time.Now()
-	//fmt.Println("detail", app.deliverState.ctx.BlockHeight(), "len(group)", len(groupList))
-	//for index := 0; index < len(groupList); index++ {
-	//	fmt.Println("groupIndex", index, "groupSize", len(groupList[index]), "list", groupList[index])
-	//}
+	fmt.Println("detail", app.deliverState.ctx.BlockHeight(), "len(group)", len(groupList))
+	for index := 0; index < len(groupList); index++ {
+		fmt.Println("groupIndex", index, "groupSize", len(groupList[index]), "list", groupList[index])
+	}
 	maxGas := app.getMaximumBlockGas()
 	currentGas := uint64(0)
 	overFlow := func(sumGas uint64, currGas int64, maxGas uint64) bool {
