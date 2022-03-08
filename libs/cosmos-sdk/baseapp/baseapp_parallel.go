@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/okex/exchain/libs/cosmos-sdk/store/cachekv"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
 	"sync"
 	"time"
@@ -449,7 +450,23 @@ func loadPreData(ms sdk.CacheMultiStore) (map[string][]byte, map[string][]byte) 
 	}
 
 	rSet, wSet := make(map[string][]byte), make(map[string][]byte, 0)
-	ms.GetRWSet(rSet, wSet)
+	//ms.GetRWSet(rSet, wSet)
+
+	mpStoreFlag := make(map[types.StoreKey]bool, 0)
+	ms.IteratorCache(func(key, value []byte, isDirty bool, isDelete bool, storeKey types.StoreKey) bool {
+		if mpStoreFlag[storeKey] {
+			return true
+		}
+		mpStoreFlag[storeKey] = true
+
+		hh, ok := ms.GetStore(storeKey).(*cachekv.Store)
+		if ok {
+			for k, v := range hh.ReadList {
+				rSet[k] = v
+			}
+		}
+		return true
+	}, nil)
 
 	return rSet, wSet
 }
