@@ -417,6 +417,10 @@ func (e executeResult) GetResponse() abci.ResponseDeliverTx {
 }
 
 func (e executeResult) Conflict(current sdk.CacheMultiStore) bool {
+	ts := time.Now()
+	defer func() {
+		sdk.AddConflictTime(time.Now().Sub(ts))
+	}()
 	if e.ms == nil {
 		return true //TODO fix later
 	}
@@ -474,7 +478,6 @@ func loadPreData(ms sdk.CacheMultiStore) map[string]*readData {
 }
 
 func newExecuteResult(r abci.ResponseDeliverTx, ms sdk.CacheMultiStore, counter uint32, evmCounter uint32) *executeResult {
-	loadPreData(ms)
 	return &executeResult{
 		resp:       r,
 		ms:         ms,
@@ -700,6 +703,10 @@ func (f *parallelTxManager) getRunBase(now int) int {
 }
 
 func (f *parallelTxManager) SetCurrentIndex(d int, res *executeResult) {
+	ts := time.Now()
+	defer func() {
+		sdk.AddMergeTime(time.Now().Sub(ts))
+	}()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if res.ms == nil {
