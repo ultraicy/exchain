@@ -76,19 +76,13 @@ func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDel
 	return true
 }
 
-func (store *Store) GetInitRead() (map[types.StoreKey]map[string][]byte, map[types.StoreKey]map[string]types.CValue) {
-	readList := make(map[types.StoreKey]map[string][]byte)
-	readList[types.NullKey] = make(map[string][]byte)
+func (store *Store) GetInitRead() map[string][]byte {
+	readList := make(map[string][]byte)
 	for k, v := range store.readList {
-		readList[types.NullKey][k] = v
+		readList[k] = v
 	}
 
-	dirtyList := make(map[types.StoreKey]map[string]types.CValue)
-	dirtyList[types.NullKey] = make(map[string]types.CValue)
-	for k, v := range store.dirtyCache {
-		dirtyList[types.NullKey][k] = v
-	}
-	return readList, dirtyList
+	return readList
 }
 
 // Implements types.KVStore.

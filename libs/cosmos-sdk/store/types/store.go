@@ -228,8 +228,8 @@ type KVStore interface {
 }
 
 type CacheManager interface {
-	IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, storeKey StoreKey) bool, sKey StoreKey) bool
-	GetInitRead() (map[StoreKey]map[string][]byte, map[StoreKey]map[string]CValue)
+	IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, sKey StoreKey) bool, sKey StoreKey) bool
+	GetInitRead() map[string][]byte
 }
 
 // Alias iterator to db's Iterator for convenience.
