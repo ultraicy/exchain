@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/okex/exchain/libs/cosmos-sdk/store/cachekv"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
 	"sync"
 	"time"
@@ -177,7 +176,6 @@ func (app *BaseApp) ParallelTxs(txs [][]byte) []*abci.ResponseDeliverTx {
 	}
 
 	sdk.AddPrePare(time.Now().Sub(ts))
-	//fmt.Println("calGroupTime", time.Now().Sub(ts).Milliseconds())
 	return app.runTxs(txWithIndex, groupList, nextIndexInGroup)
 
 }
@@ -409,7 +407,8 @@ type executeResult struct {
 	counter    uint32
 	err        error
 	evmCounter uint32
-	readList   map[string]*readData
+	readList   map[string][]byte
+	writeList  map[string][]byte
 }
 
 func (e executeResult) GetResponse() abci.ResponseDeliverTx {
@@ -426,7 +425,7 @@ func (e executeResult) Conflict(cc *conflictCheck) bool {
 	}
 
 	for k, v := range e.readList {
-		if cc.isConflict(k, v.value) {
+		if cc.isConflict(k, v) {
 			return true
 		}
 	}
@@ -444,41 +443,27 @@ func (e executeResult) GetCounter() uint32 {
 	return e.counter
 }
 
-func loadPreData(ms sdk.CacheMultiStore) map[string]*readData {
+func loadPreData(ms sdk.CacheMultiStore) (map[string][]byte, map[string][]byte) {
 	if ms == nil {
-		return nil
+		return nil, nil
 	}
 
-	ans := make(map[string]*readData)
+	rSet, wSet := make(map[string][]byte), make(map[string][]byte, 0)
+	ms.GetRWSet(rSet, wSet)
 
-	mpStoreFlag := make(map[types.StoreKey]bool, 0)
-	ms.IteratorCache(func(key, value []byte, isDirty bool, isDelete bool, storeKey types.StoreKey) bool {
-		if mpStoreFlag[storeKey] {
-			return true
-		}
-		mpStoreFlag[storeKey] = true
-
-		hh, ok := ms.GetStore(storeKey).(*cachekv.Store)
-		if ok {
-			for k, v := range hh.ReadList {
-				ans[k] = &readData{
-					value: v,
-					sKey:  storeKey,
-				}
-			}
-		}
-		return true
-	}, nil)
-	return ans
+	return rSet, wSet
 }
 
 func newExecuteResult(r abci.ResponseDeliverTx, ms sdk.CacheMultiStore, counter uint32, evmCounter uint32) *executeResult {
+
+	rSet, wSet := loadPreData(ms)
 	return &executeResult{
 		resp:       r,
 		ms:         ms,
 		counter:    counter,
 		evmCounter: evmCounter,
-		readList:   loadPreData(ms),
+		readList:   rSet,
+		writeList:  wSet,
 	}
 }
 
@@ -614,7 +599,6 @@ func (c *conflictCheck) isConflict(key string, vaule []byte) bool {
 
 	if dirtyItem, ok := c.items[key]; ok {
 		if !bytes.Equal(vaule, dirtyItem) {
-			//fm/**/t.Println("------conflict------", "key", hex.EncodeToString(byteK), "readvalue", hex.EncodeToString(v), "currValue", hex.EncodeToString(dirtyItem.Value), dirtyItem.Dirty, dirtyItem.Deleted)
 			return true
 		}
 	}

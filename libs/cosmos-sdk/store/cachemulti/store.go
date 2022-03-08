@@ -127,6 +127,12 @@ func (cms Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDelete
 	return true
 }
 
+func (cms Store) GetRWSet(rSet map[string][]byte, wSet map[string][]byte) {
+	for _, store := range cms.stores {
+		store.GetRWSet(rSet, wSet)
+	}
+}
+
 // Implements CacheWrapper.
 func (cms Store) CacheWrap() types.CacheWrap {
 	return cms.CacheMultiStore().(types.CacheWrap)
