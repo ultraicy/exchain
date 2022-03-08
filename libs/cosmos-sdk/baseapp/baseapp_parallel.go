@@ -728,7 +728,7 @@ func (f *parallelTxManager) SetCurrentIndex(d int, res *executeResult) {
 		}
 	}
 
-	f.cms.Write() //TODO delete?
+	//f.cms.Write() //TODO delete?
 	f.currIndex = d
 }
 
