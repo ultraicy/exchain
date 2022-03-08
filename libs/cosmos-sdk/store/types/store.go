@@ -229,6 +229,7 @@ type KVStore interface {
 
 type CacheManager interface {
 	IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, storeKey StoreKey) bool, sKey StoreKey) bool
+	GetInitRead() (map[StoreKey]map[string][]byte, map[StoreKey]map[string]CValue)
 }
 
 // Alias iterator to db's Iterator for convenience.
@@ -386,3 +387,15 @@ type MultiStorePersistentCache interface {
 	// Reset the entire set of internal caches.
 	Reset()
 }
+
+// If value is nil but deleted is false, it means the parent doesn't have the
+// key.  (No need to delete upon Write())
+type CValue struct {
+	Value   []byte
+	Deleted bool
+	Dirty   bool
+}
+
+var (
+	NullKey = NewKVStoreKey("")
+)

@@ -3,10 +3,9 @@ package baseapp
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/okex/exchain/libs/cosmos-sdk/store/cachekv"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
 	"sync"
 	"time"
@@ -266,7 +265,7 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 			s := pm.txStatus[txBytes]
 			res := txReps[txIndex]
 
-			if res.Conflict(pm.cms) || overFlow(currentGas, res.resp.GasUsed, maxGas) {
+			if res.Conflict(pm.currDirty) || overFlow(currentGas, res.resp.GasUsed, maxGas) {
 				//fmt.Println("Chongtu", txIndex)
 				if pm.workgroup.isRunning(txIndex) {
 					runningTaskID := pm.workgroup.runningStats(txIndex)
@@ -418,78 +417,67 @@ type executeResult struct {
 	counter    uint32
 	err        error
 	evmCounter uint32
-	readList   map[string]*readData
+	readList   map[types.StoreKey]map[string][]byte
+	dirtyList  map[types.StoreKey]map[string]types.CValue
 }
 
 func (e executeResult) GetResponse() abci.ResponseDeliverTx {
 	return e.resp
 }
 
-func (e executeResult) Conflict(current sdk.CacheMultiStore) bool {
+func (e executeResult) Conflict(currDirty map[types.StoreKey]map[string]types.CValue) bool {
 	if e.ms == nil {
 		return true //TODO fix later
 	}
 
-	for k, v := range e.readList {
-		if whiteAccountList[hex.EncodeToString([]byte(k))] {
-			continue
-		}
-		currentKey := current.GetKVStore(v.sKey).Get([]byte(k))
-		if !bytes.Equal(v.value, currentKey) {
-			return true
-		}
+	//fmt.Println("checkCOnlict", "index", e.counter)
+	for storeKey, sMp := range e.readList {
 
+		//fmt.Println("storeKey", storeKey.Name(), len(sMp), len(e.dirtyList[storeKey]))
+		dirtyStoreMap := currDirty[storeKey]
+		for k, v := range sMp {
+			//fmt.Println("check????", hex.EncodeToString([]byte(k)))
+			//byteK := []byte(k)
+
+			if k == whiteAcc {
+				continue
+			}
+			//if hex.EncodeToString(byteK) == "05d32572c8c62f1ef61bcc6df8aa77886f05ecadef59b6d13c6a2c9c8a75cfffc2c3eeff4848fb88bb5b3200d804d1e9927008b513" {
+			//	fmt.Println("read----", hex.EncodeToString(v), "--", hex.EncodeToString(dirtyStoreMap[k].Value))
+			//}
+			if dirtyItem, ok := dirtyStoreMap[k]; ok {
+				if !bytes.Equal(v, dirtyItem.Value) {
+					//fm/**/t.Println("------conflict------", "key", hex.EncodeToString(byteK), "readvalue", hex.EncodeToString(v), "currValue", hex.EncodeToString(dirtyItem.Value), dirtyItem.Dirty, dirtyItem.Deleted)
+					return true
+				}
+			}
+		}
 	}
-
 	return false
 }
 
 var (
-	whiteAccountList = map[string]bool{
-		"01f1829676db577682e944fc3493d451b67ff3e29f": true, //fee
-	}
+	whiteAcc = string(hexutil.MustDecode("0x01f1829676db577682e944fc3493d451b67ff3e29f")) //fee
+
 )
 
 func (e executeResult) GetCounter() uint32 {
 	return e.counter
 }
 
-func loadPreData(ms sdk.CacheMultiStore) map[string]*readData {
-	if ms == nil {
-		return nil
-	}
-
-	ans := make(map[string]*readData)
-
-	mpStoreFlag := make(map[types.StoreKey]bool, 0)
-	ms.IteratorCache(func(key, value []byte, isDirty bool, isDelete bool, storeKey types.StoreKey) bool {
-		if mpStoreFlag[storeKey] {
-			return true
-		}
-		mpStoreFlag[storeKey] = true
-
-		hh, ok := ms.GetStore(storeKey).(*cachekv.Store)
-		if ok {
-			for k, v := range hh.ReadList {
-				ans[k] = &readData{
-					value: v,
-					sKey:  storeKey,
-				}
-			}
-		}
-		return true
-	}, nil)
-	return ans
-}
-
 func newExecuteResult(r abci.ResponseDeliverTx, ms sdk.CacheMultiStore, counter uint32, evmCounter uint32) *executeResult {
-	loadPreData(ms)
+	readList := make(map[types.StoreKey]map[string][]byte)
+	dList := make(map[types.StoreKey]map[string]types.CValue)
+	if ms != nil {
+		readList, dList = ms.GetInitRead()
+	}
 	return &executeResult{
 		resp:       r,
 		ms:         ms,
 		counter:    counter,
 		evmCounter: evmCounter,
-		readList:   loadPreData(ms),
+		readList:   readList,
+		dirtyList:  dList,
 	}
 }
 
@@ -595,6 +583,7 @@ type parallelTxManager struct {
 	mu  sync.RWMutex
 	cms sdk.CacheMultiStore
 
+	currDirty       map[types.StoreKey]map[string]types.CValue
 	currIndex       int
 	runBase         map[int]int
 	markFailedStats map[int]bool
@@ -630,6 +619,7 @@ func newParallelTxManager() *parallelTxManager {
 		preTxInGroup:  make(map[int]int),
 
 		currIndex:       -1,
+		currDirty:       make(map[types.StoreKey]map[string]types.CValue),
 		runBase:         make(map[int]int),
 		markFailedStats: make(map[int]bool),
 	}
@@ -645,6 +635,7 @@ func (f *parallelTxManager) clear() {
 	f.preTxInGroup = make(map[int]int)
 	f.runBase = make(map[int]int)
 	f.currIndex = -1
+	f.currDirty = make(map[types.StoreKey]map[string]types.CValue)
 	f.markFailedStats = make(map[int]bool)
 
 	f.workgroup.runningStatus = make(map[int]int)
@@ -715,18 +706,29 @@ func (f *parallelTxManager) SetCurrentIndex(d int, res *executeResult) {
 		return
 	}
 
-	res.ms.IteratorCache(func(key, value []byte, isDirty bool, isdelete bool, storeKey sdk.StoreKey) bool {
-		if isDirty {
-			if isdelete {
-				f.cms.GetKVStore(storeKey).Delete(key)
-			} else if value != nil {
-				f.cms.GetKVStore(storeKey).Set(key, value)
-			}
+	if len(f.currDirty) == 0 {
+		for storeKey, _ := range res.dirtyList {
+			f.currDirty[storeKey] = make(map[string]types.CValue)
 		}
-		return true
-	}, nil)
-	f.cms.Write()
+	}
 
+	//fmt.Println("setCurrent", d)
+	for key, mp := range res.dirtyList {
+		s := f.cms.GetKVStore(key)
+		for k, v := range mp {
+			//if hex.EncodeToString([]byte(k)) == "05d32572c8c62f1ef61bcc6df8aa77886f05ecadef59b6d13c6a2c9c8a75cfffc2c3eeff4848fb88bb5b3200d804d1e9927008b513" {
+			//	fmt.Println("set--", hex.EncodeToString(v.Value), v.Dirty, v.Deleted)
+			//}
+			if v.Deleted {
+				s.Delete([]byte(k))
+			} else {
+				s.Set([]byte(k), v.Value)
+			}
+			f.currDirty[key][k] = v
+		}
+	}
+
+	f.cms.Write() //TODO delete?
 	f.currIndex = d
 }
 

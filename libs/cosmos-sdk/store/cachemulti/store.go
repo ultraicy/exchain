@@ -127,6 +127,18 @@ func (cms Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDelete
 	return true
 }
 
+func (cms Store) GetInitRead() (map[types.StoreKey]map[string][]byte, map[types.StoreKey]map[string]types.CValue) {
+	readList := make(map[types.StoreKey]map[string][]byte, 0)
+	dirtyList := make(map[types.StoreKey]map[string]types.CValue)
+	for k, store := range cms.stores {
+		r, d := store.GetInitRead()
+		readList[k] = r[types.NullKey]
+		dirtyList[k] = d[types.NullKey]
+	}
+
+	return readList, dirtyList
+}
+
 // Implements CacheWrapper.
 func (cms Store) CacheWrap() types.CacheWrap {
 	return cms.CacheMultiStore().(types.CacheWrap)

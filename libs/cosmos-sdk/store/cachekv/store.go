@@ -16,30 +16,22 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
 )
 
-// If value is nil but deleted is false, it means the parent doesn't have the
-// key.  (No need to delete upon Write())
-type cValue struct {
-	value   []byte
-	deleted bool
-	dirty   bool
-}
-
 // Store wraps an in-memory cache around an underlying types.KVStore.
 type Store struct {
 	mtx           sync.Mutex
-	cache         map[string]cValue
+	dirtyCache    map[string]types.CValue
 	unsortedCache map[string]struct{}
 	sortedCache   *list.List // always ascending sorted
 	parent        types.KVStore
-	ReadList      map[string][]byte
+	readList      map[string][]byte
 }
 
 var _ types.CacheKVStore = (*Store)(nil)
 
 func NewStore(parent types.KVStore) *Store {
 	return &Store{
-		cache:         make(map[string]cValue),
-		ReadList:      make(map[string][]byte),
+		dirtyCache:    make(map[string]types.CValue),
+		readList:      make(map[string][]byte),
 		unsortedCache: make(map[string]struct{}),
 		sortedCache:   list.New(),
 		parent:        parent,
@@ -58,30 +50,45 @@ func (store *Store) Get(key []byte) (value []byte) {
 
 	types.AssertValidKey(key)
 
-	cacheValue, ok := store.cache[string(key)]
+	cacheValue, ok := store.dirtyCache[string(key)]
 	if !ok {
 		value = store.parent.Get(key)
 		store.setCacheValue(key, value, false, false)
 	} else {
-		value = cacheValue.value
+		value = cacheValue.Value
 	}
 
 	return value
 }
 
 func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, sKey types.StoreKey) bool, sKey types.StoreKey) bool {
-	if cb == nil || len(store.cache) == 0 {
+	if cb == nil || len(store.dirtyCache) == 0 {
 		return true
 	}
 	store.mtx.Lock()
 	defer store.mtx.Unlock()
 
-	for key, v := range store.cache {
-		if !cb([]byte(key), v.value, v.dirty, v.deleted, sKey) {
+	for key, v := range store.dirtyCache {
+		if !cb([]byte(key), v.Value, v.Dirty, v.Deleted, sKey) {
 			return false
 		}
 	}
 	return true
+}
+
+func (store *Store) GetInitRead() (map[types.StoreKey]map[string][]byte, map[types.StoreKey]map[string]types.CValue) {
+	readList := make(map[types.StoreKey]map[string][]byte)
+	readList[types.NullKey] = make(map[string][]byte)
+	for k, v := range store.readList {
+		readList[types.NullKey][k] = v
+	}
+
+	dirtyList := make(map[types.StoreKey]map[string]types.CValue)
+	dirtyList[types.NullKey] = make(map[string]types.CValue)
+	for k, v := range store.dirtyCache {
+		dirtyList[types.NullKey][k] = v
+	}
+	return readList, dirtyList
 }
 
 // Implements types.KVStore.
@@ -118,11 +125,10 @@ func (store *Store) Write() {
 
 	// We need a copy of all of the keys.
 	// Not the best, but probably not a bottleneck depending.
-	keys := make([]string, 0, len(store.cache))
-	for key, dbValue := range store.cache {
-		if dbValue.dirty {
-			keys = append(keys, key)
-		}
+	keys := make([]string, 0, len(store.dirtyCache))
+	for key, _ := range store.dirtyCache {
+		keys = append(keys, key)
+
 	}
 
 	sort.Strings(keys)
@@ -130,19 +136,19 @@ func (store *Store) Write() {
 	// TODO: Consider allowing usage of Batch, which would allow the write to
 	// at least happen atomically.
 	for _, key := range keys {
-		cacheValue := store.cache[key]
+		cacheValue := store.dirtyCache[key]
 		switch {
-		case cacheValue.deleted:
+		case cacheValue.Deleted:
 			store.parent.Delete([]byte(key))
-		case cacheValue.value == nil:
+		case cacheValue.Value == nil:
 			// Skip, it already doesn't exist in parent.
 		default:
-			store.parent.Set([]byte(key), cacheValue.value)
+			store.parent.Set([]byte(key), cacheValue.Value)
 		}
 	}
 
 	// Clear the cache
-	store.cache = make(map[string]cValue)
+	store.dirtyCache = make(map[string]types.CValue)
 	store.unsortedCache = make(map[string]struct{})
 	store.sortedCache.Init()
 }
@@ -220,8 +226,8 @@ func (store *Store) dirtyItems(start, end []byte) {
 	n := len(store.unsortedCache)
 	for key := range store.unsortedCache {
 		if dbm.IsKeyInDomain(strToByte(key), start, end) {
-			cacheValue := store.cache[key]
-			unsorted = append(unsorted, &tmkv.Pair{Key: []byte(key), Value: cacheValue.value})
+			cacheValue := store.dirtyCache[key]
+			unsorted = append(unsorted, &tmkv.Pair{Key: []byte(key), Value: cacheValue.Value})
 		}
 	}
 
@@ -269,13 +275,14 @@ func (store *Store) dirtyItems(start, end []byte) {
 func (store *Store) setCacheValue(key, value []byte, deleted bool, dirty bool) {
 	keyStr := string(key)
 	if !dirty {
-		store.ReadList[keyStr] = value
+		store.readList[keyStr] = value
+		return
 	}
 
-	store.cache[keyStr] = cValue{
-		value:   value,
-		deleted: deleted,
-		dirty:   dirty,
+	store.dirtyCache[keyStr] = types.CValue{
+		Value:   value,
+		Deleted: deleted,
+		Dirty:   dirty,
 	}
 	if dirty {
 		store.unsortedCache[keyStr] = struct{}{}
