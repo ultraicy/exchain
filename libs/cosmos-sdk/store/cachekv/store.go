@@ -336,10 +336,10 @@ func (store *Store) setCacheValue(key, value []byte, deleted bool, dirty bool) {
 	*/
 
 	keyStr := string(key)
-	if !dirty {
-		store.readList[keyStr] = value
-		//return
-	}
+	//if !dirty {
+	//	store.readList[keyStr] = value
+	//	//return
+	//}
 
 	store.cache[keyStr] = cValue{
 		value:   value,
