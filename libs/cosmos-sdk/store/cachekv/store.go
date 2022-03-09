@@ -145,7 +145,6 @@ func (store *Store) Write() {
 	for key, _ := range store.dirty {
 		keys[index] = key
 		index++
-
 	}
 
 	sort.Strings(keys)
