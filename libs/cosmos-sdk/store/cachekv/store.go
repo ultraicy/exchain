@@ -63,12 +63,9 @@ func (store *Store) Get(key []byte) (value []byte) {
 	sKey := string(key)
 	cacheValue, ok := store.cache[sKey]
 	if !ok {
-		if c, ok := store.readList[sKey]; ok {
-			value = c
-		} else {
-			value = store.parent.Get(key)
-			store.setCacheValue(key, value, false, false)
-		}
+		value = store.parent.Get(key)
+		store.setCacheValue(key, value, false, false)
+
 	} else {
 		value = cacheValue.value
 	}
@@ -77,7 +74,7 @@ func (store *Store) Get(key []byte) (value []byte) {
 }
 
 func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, sKey types.StoreKey) bool, sKey types.StoreKey) bool {
-	if cb == nil {
+	if cb == nil && len(store.cache) == 0 {
 		return true
 	}
 	store.mtx.Lock()
@@ -92,11 +89,11 @@ func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDel
 }
 
 func (store *Store) GetRWSet(rSet map[string][]byte, wSet map[string][]byte) {
-	for k, v := range store.readList {
-		rSet[k] = v
-	}
 	for k, v := range store.cache {
-		wSet[k] = v.value
+		if v.dirty {
+			wSet[k] = v.value
+		}
+		rSet[k] = store.readList[k]
 	}
 }
 
@@ -141,8 +138,8 @@ func (store *Store) Write() {
 	// We need a copy of all of the keys.
 	// Not the best, but probably not a bottleneck depending.
 	keys := make([]string, 0, len(store.cache))
-	for key, value := range store.cache {
-		if value.dirty {
+	for key, dbValue := range store.cache {
+		if dbValue.dirty {
 			keys = append(keys, key)
 		}
 	}
