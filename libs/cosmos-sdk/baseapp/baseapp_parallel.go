@@ -474,7 +474,7 @@ type asyncWorkGroup struct {
 	resultCb func(*executeResult)
 
 	taskCh  chan *task
-	taskRun func([]byte, int)
+	taskRun func([]byte)
 }
 
 func newAsyncWorkGroup() *asyncWorkGroup {
@@ -530,7 +530,7 @@ func (a *asyncWorkGroup) Start() {
 			for true {
 				select {
 				case task := <-a.taskCh:
-					a.taskRun(task.txBytes, task.index)
+					a.taskRun(task.txBytes)
 				}
 			}
 		}()
@@ -741,6 +741,7 @@ func (f *parallelTxManager) SetCurrentIndex(d int, res *executeResult) {
 	res.ms.IteratorCache(func(key, value []byte, isDirty bool, isdelete bool, storeKey sdk.StoreKey) bool {
 		if isDirty {
 			if isdelete {
+				//TODO get only once
 				f.cms.GetKVStore(storeKey).Delete(key)
 			} else if value != nil {
 				f.cms.GetKVStore(storeKey).Set(key, value)
