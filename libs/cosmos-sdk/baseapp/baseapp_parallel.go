@@ -10,6 +10,8 @@ import (
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	sdkerrors "github.com/okex/exchain/libs/cosmos-sdk/types/errors"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
+	state2 "github.com/okex/exchain/libs/tendermint/state"
+	"github.com/spf13/viper"
 	"sync"
 )
 
@@ -525,17 +527,21 @@ func (a *asyncWorkGroup) AddTask(tx []byte, index int) {
 }
 
 func (a *asyncWorkGroup) Start() {
-	//for index := 0; index < 64; index++ {
-	//	go func() {
-	//		for true {
-	//			select {
-	//			case task := <-a.taskCh:
-	//				a.taskRun(task.txBytes)
-	//			}
-	//		}
-	//	}()
-	//
-	//}
+	if !viper.GetBool(state2.FlagParalleledTx) {
+		fmt.Println("asyncWorkGroup not start")
+		return
+	}
+	for index := 0; index < 64; index++ {
+		go func() {
+			for true {
+				select {
+				case task := <-a.taskCh:
+					a.taskRun(task.txBytes)
+				}
+			}
+		}()
+
+	}
 
 	go func() {
 		for {
