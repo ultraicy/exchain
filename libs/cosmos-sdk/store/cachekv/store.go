@@ -28,9 +28,9 @@ type cValue struct {
 
 // Store wraps an in-memory cache around an underlying types.KVStore.
 type Store struct {
-	mtx           sync.Mutex
-	cache         map[string]cValue
-	readList      map[string][]byte
+	mtx   sync.Mutex
+	cache map[string]cValue
+	//readList      map[string][]byte
 	unsortedCache map[string]struct{}
 	sortedCache   *list.List // always ascending sorted
 	parent        types.KVStore
@@ -40,8 +40,8 @@ var _ types.CacheKVStore = (*Store)(nil)
 
 func NewStore(parent types.KVStore) *Store {
 	return &Store{
-		cache:         make(map[string]cValue),
-		readList:      make(map[string][]byte),
+		cache: make(map[string]cValue),
+		//readList:      make(map[string][]byte),
 		unsortedCache: make(map[string]struct{}),
 		sortedCache:   list.New(),
 		parent:        parent,
@@ -60,12 +60,10 @@ func (store *Store) Get(key []byte) (value []byte) {
 
 	types.AssertValidKey(key)
 
-	sKey := string(key)
-	cacheValue, ok := store.cache[sKey]
+	cacheValue, ok := store.cache[string(key)]
 	if !ok {
 		value = store.parent.Get(key)
 		store.setCacheValue(key, value, false, false)
-
 	} else {
 		value = cacheValue.value
 	}
@@ -93,7 +91,7 @@ func (store *Store) GetRWSet(rSet map[string][]byte, wSet map[string][]byte) {
 		if v.dirty {
 			wSet[k] = v.value
 		}
-		rSet[k] = store.readList[k]
+		//rSet[k] = store.readList[k]
 	}
 }
 
@@ -194,10 +192,10 @@ func (store *Store) clearCache() {
 	for key := range store.cache {
 		delete(store.cache, key)
 	}
-
-	for Key := range store.readList {
-		delete(store.readList, Key)
-	}
+	//
+	//for Key := range store.readList {
+	//	delete(store.readList, Key)
+	//}
 	for key := range store.unsortedCache {
 		delete(store.unsortedCache, key)
 	}
