@@ -22,8 +22,8 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/version"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/bank"
-	capabilityModule "github.com/okex/exchain/libs/cosmos-sdk/x/capability"
-	capabilitytypes "github.com/okex/exchain/libs/cosmos-sdk/x/capability/types"
+	//capabilityModule "github.com/okex/exchain/libs/cosmos-sdk/x/capability"
+	//capabilitytypes "github.com/okex/exchain/libs/cosmos-sdk/x/capability/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/crisis"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/mint"
 	govclient "github.com/okex/exchain/libs/cosmos-sdk/x/mint/client"
@@ -117,7 +117,7 @@ var (
 		order.AppModuleBasic{},
 		ammswap.AppModuleBasic{},
 		farm.AppModuleBasic{},
-		capabilityModule.AppModuleBasic{},
+		//capabilityModule.AppModuleBasic{},
 		//ibc.AppModuleBasic{},
 		//transfer.AppModuleBasic{},
 	)
@@ -268,13 +268,15 @@ func NewOKExChainApp(
 		supply.StoreKey, mint.StoreKey, distr.StoreKey, slashing.StoreKey,
 		gov.StoreKey, params.StoreKey, upgrade.StoreKey, evidence.StoreKey,
 		evm.StoreKey, token.StoreKey, token.KeyLock, dex.StoreKey, dex.TokenPairStoreKey,
-		order.OrderStoreKey, ammswap.StoreKey, farm.StoreKey, capabilitytypes.StoreKey,
+		order.OrderStoreKey, ammswap.StoreKey, farm.StoreKey,
+
+		//capabilitytypes.StoreKey,
 		//host.StoreKey,
 		//ibctransfertypes.StoreKey,
 	)
 
 	tkeys := sdk.NewTransientStoreKeys(params.TStoreKey)
-	memKeys := sdk.NewMemoryStoreKeys(capabilitytypes.MemStoreKey)
+	//memKeys := sdk.NewMemoryStoreKeys(capabilitytypes.MemStoreKey)
 
 	app := &OKExChainApp{
 		BaseApp:        bApp,
@@ -323,8 +325,8 @@ func NewOKExChainApp(
 		cdc, keys[supply.StoreKey], &app.AccountKeeper, app.BankKeeper, maccPerms,
 	)
 
-	stakingKeeper := staking.NewKeeper(
-		cdc, proxy, keys[staking.StoreKey], app.SupplyKeeper, app.subspaces[staking.ModuleName],
+	stakingKeeper := staking.NewKeeperO(
+		cdc, keys[staking.StoreKey], app.SupplyKeeper, app.subspaces[staking.ModuleName],
 	)
 	app.ParamsKeeper.SetStakingKeeper(stakingKeeper)
 	app.MintKeeper = mint.NewKeeper(
@@ -526,7 +528,8 @@ func NewOKExChainApp(
 	// initialize stores
 	app.MountKVStores(keys)
 	app.MountTransientStores(tkeys)
-	app.MountMemoryStores(memKeys)
+
+	//app.MountMemoryStores(memKeys)
 
 	// initialize BaseApp
 	app.SetInitChainer(app.InitChainer)
