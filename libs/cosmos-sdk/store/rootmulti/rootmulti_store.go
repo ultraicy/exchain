@@ -911,11 +911,11 @@ func (ci commitInfo) originHash() []byte {
 	m := make(map[string][]byte, len(ci.StoreInfos))
 	hashs := make(Hashes, 0)
 	for _, storeInfo := range ci.StoreInfos {
-		//if ci.Version == 5810701 {
-		//	if storeInfo.Name == "ibc" || storeInfo.Name == "transfer" || storeInfo.Name == "upgrade" {
-		//		continue
-		//	}
-		//}
+		if ci.Version == 5810701 {
+			if storeInfo.Name == "acc" {
+				storeInfo.Hash()
+			}
+		}
 		hashs = append(hashs, HashInfo{
 			storeName: storeInfo.Name,
 			hash:      hex.EncodeToString(storeInfo.Hash()),

@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"encoding/hex"
 	"fmt"
+	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
 	"sort"
 	"sync"
 
@@ -597,6 +598,7 @@ func (tree *MutableTree) SaveVersionSync(version int64, useDeltas bool) ([]byte,
 			}
 		} else {
 			tree.ndb.SaveBranch(batch, tree.root, tree.savedNodes)
+			logrusplugin.Error("tree", "nodes的数量", len(tree.savedNodes))
 		}
 		// generate state delta
 		if produceDelta {
