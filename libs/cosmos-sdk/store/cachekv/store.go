@@ -30,6 +30,7 @@ type cValue struct {
 type Store struct {
 	mtx           sync.Mutex
 	cache         map[string]cValue
+	readList      map[string][]byte
 	unsortedCache map[string]struct{}
 	sortedCache   *list.List // always ascending sorted
 	parent        types.KVStore
@@ -40,6 +41,7 @@ var _ types.CacheKVStore = (*Store)(nil)
 func NewStore(parent types.KVStore) *Store {
 	return &Store{
 		cache:         make(map[string]cValue),
+		readList:      make(map[string][]byte),
 		unsortedCache: make(map[string]struct{}),
 		sortedCache:   list.New(),
 		parent:        parent,
@@ -58,10 +60,15 @@ func (store *Store) Get(key []byte) (value []byte) {
 
 	types.AssertValidKey(key)
 
-	cacheValue, ok := store.cache[string(key)]
+	sKey := string(key)
+	cacheValue, ok := store.cache[sKey]
 	if !ok {
-		value = store.parent.Get(key)
-		store.setCacheValue(key, value, false, false)
+		if readValue, ok := store.readList[sKey]; ok {
+			value = readValue
+		} else {
+			value = store.parent.Get(key)
+			store.setCacheValue(key, value, false, false)
+		}
 	} else {
 		value = cacheValue.value
 	}
@@ -125,10 +132,9 @@ func (store *Store) Write() {
 	// We need a copy of all of the keys.
 	// Not the best, but probably not a bottleneck depending.
 	keys := make([]string, 0, len(store.cache))
-	for key, dbValue := range store.cache {
-		if dbValue.dirty {
-			keys = append(keys, key)
-		}
+	for key, _ := range store.cache {
+		keys = append(keys, key)
+
 	}
 
 	sort.Strings(keys)
@@ -159,9 +165,6 @@ func (store *Store) writeToCacheKv(parent *Store) {
 	// TODO: Consider allowing usage of Batch, which would allow the write to
 	// at least happen atomically.
 	for key, cacheValue := range store.cache {
-		if !cacheValue.dirty {
-			continue
-		}
 		switch {
 		case cacheValue.deleted:
 			parent.Delete(amino.StrToBytes(key))
@@ -178,6 +181,9 @@ func (store *Store) writeToCacheKv(parent *Store) {
 
 func (store *Store) clearCache() {
 	// https://github.com/golang/go/issues/20138
+	for key := range store.cache {
+		delete(store.cache, key)
+	}
 	for key := range store.cache {
 		delete(store.cache, key)
 	}
@@ -309,6 +315,10 @@ func (store *Store) dirtyItems(start, end []byte) {
 // Only entrypoint to mutate store.cache.
 func (store *Store) setCacheValue(key, value []byte, deleted bool, dirty bool) {
 	keyStr := string(key)
+	if dirty {
+		store.readList[keyStr] = value
+		return
+	}
 	store.cache[keyStr] = cValue{
 		value:   value,
 		deleted: deleted,
