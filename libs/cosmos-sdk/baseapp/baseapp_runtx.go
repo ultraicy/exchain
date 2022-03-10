@@ -126,9 +126,9 @@ func (app *BaseApp) runAnte(info *runTxInfo, mode runTxMode) error {
 	anteCtx, info.msCacheAnte = app.cacheTxContext(info.ctx, info.txBytes)
 
 	if mode == runTxModeDeliverInAsync {
-		//info.msCacheAnte = nil
-		//msCacheAnte := app.parallelTxManage.getTxResult(info.txBytes)
-		//info.msCacheAnte = msCacheAnte
+		info.msCacheAnte = nil
+		msCacheAnte := app.parallelTxManage.getTxResult(info.txBytes)
+		info.msCacheAnte = msCacheAnte
 		anteCtx = anteCtx.WithMultiStore(info.msCacheAnte)
 	}
 	anteCtx = anteCtx.WithEventManager(sdk.NewEventManager())
