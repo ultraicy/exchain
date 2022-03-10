@@ -2,7 +2,7 @@ package state
 
 import (
 	"bytes"
-	"crypto/sha256"
+	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
@@ -380,15 +380,31 @@ func (arz *ABCIResponses) Bytes() []byte {
 }
 
 func (arz *ABCIResponses) ResultsHash() []byte {
-	sb := strings.Builder{}
-	s := sha256.New()
-	for _, v := range arz.DeliverTxs {
-		sb.WriteString(fmt.Sprintf("%d:%s;", v.Code, hex.EncodeToString(s.Sum(v.Data))))
-	}
-	sb.WriteString("\n")
-	logrusplugin.Error("resultHash", "结果为", sb.String())
+	arz.info()
 	results := types.NewResults(arz.DeliverTxs)
 	return results.Hash()
+}
+func (arz *ABCIResponses) info() {
+	results := types.NewResults(arz.DeliverTxs)
+	l := len(results)
+	bzs := make([][]byte, l)
+	sb := strings.Builder{}
+	sb.WriteString("\n")
+	for i := 0; i < l; i++ {
+		v := results[i]
+		sb.WriteString(fmt.Sprintf("%d:%s;", v.Code, hex.EncodeToString(hash(v.Bytes()))))
+		bzs[i] = results[i].Bytes()
+	}
+	logrusplugin.Error("resultHash", "结果为", sb.String())
+}
+func hash(data []byte) []byte {
+
+	h := sha1.New()
+
+	h.Write(data)
+
+	bs := h.Sum(nil)
+	return bs
 }
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the database.
