@@ -7,6 +7,7 @@ import (
 	"fmt"
 	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/tendermint/go-amino"
@@ -599,6 +600,19 @@ func (tree *MutableTree) SaveVersionSync(version int64, useDeltas bool) ([]byte,
 		} else {
 			tree.ndb.SaveBranch(batch, tree.root, tree.savedNodes)
 			logrusplugin.Error("tree", "nodes的数量", len(tree.savedNodes))
+			if len(tree.savedNodes) == 676 {
+				sb := strings.Builder{}
+				ks := make([]string, 0)
+				for k, _ := range tree.savedNodes {
+					ks = append(ks, k)
+				}
+				sort.Strings(ks)
+				for _, k := range ks {
+					sb.WriteString(fmt.Sprintf("%s:%s:%s,", hex.EncodeToString([]byte(k)), hex.EncodeToString(tree.savedNodes[k].value), hex.EncodeToString(tree.savedNodes[k].hash)))
+				}
+				logrusplugin.Error(sb.String() + "\n\n\n\n\n")
+			}
+
 		}
 		// generate state delta
 		if produceDelta {
