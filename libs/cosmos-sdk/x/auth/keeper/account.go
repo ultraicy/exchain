@@ -3,6 +3,7 @@ package keeper
 import (
 	"context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
+	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
 	codectypes "github.com/okex/exchain/libs/cosmos-sdk/codec/types"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth/exported"
@@ -76,7 +77,7 @@ func (ak AccountKeeper) SetAccount(ctx sdk.Context, acc exported.Account) {
 	}
 	store.Set(types.AddressStoreKey(addr), bz)
 	ctx.Cache().UpdateAccount(acc.GetAddress(), acc, len(bz), true)
-
+	logrusplugin.Error("accountKeeper", "acc", acc.GetAddress().String())
 	if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
 		if ak.observers != nil {
 			for _, observer := range ak.observers {
