@@ -81,6 +81,7 @@ var byteTx decodeFunc = func(c *codec.Codec, proxy *codec.CodecProxy, bytes []by
 }
 
 var relayTx decodeFunc = func(c *codec.Codec, proxy *codec.CodecProxy, bytes []byte, i int64) (sdk.Tx, error) {
+	panic("asd")
 	tx := &typestx.Tx{}
 	simReq := &typestx.SimulateRequest{}
 	txBytes := bytes
