@@ -263,7 +263,7 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 			s := pm.txStatus[txBytes]
 			res := txReps[txIndex]
 
-			if res.Conflict(pm.cc) || overFlow(currentGas, res.resp.GasUsed, maxGas) {
+			if res.Conflict(pm.dirtyKey) || overFlow(currentGas, res.resp.GasUsed, maxGas) {
 				if pm.workgroup.isRunning(txIndex) {
 					runningTaskID := pm.workgroup.runningStats(txIndex)
 					pm.markFailed(runningTaskID)
@@ -420,7 +420,7 @@ func (e executeResult) GetResponse() abci.ResponseDeliverTx {
 	return e.resp
 }
 
-func (e executeResult) Conflict(cc *conflictCheck) bool {
+func (e executeResult) Conflict(dirty map[string][]byte) bool {
 	//ts := time.Now()
 	//defer func() {
 	//	sdk.AddConflictTime(time.Now().Sub(ts))
@@ -429,10 +429,14 @@ func (e executeResult) Conflict(cc *conflictCheck) bool {
 		return true //TODO fix later
 	}
 
-	for k, v := range e.readList {
-		if cc.isConflict(k, v) {
-			return true
+	for key, v := range e.readList {
+
+		if dirtyItem, ok := dirty[key]; ok {
+			if !bytes.Equal(v, dirtyItem) {
+				return true
+			}
 		}
+		return false
 	}
 
 	return false
@@ -456,6 +460,7 @@ func loadPreData(ms sdk.CacheMultiStore) (map[string][]byte, map[string][]byte) 
 
 func newExecuteResult(r abci.ResponseDeliverTx, ms sdk.CacheMultiStore, counter uint32, evmCounter uint32) *executeResult {
 	rSet, wSet := loadPreData(ms)
+	delete(rSet, whiteAcc)
 	return &executeResult{
 		resp:       r,
 		ms:         ms,
@@ -572,46 +577,16 @@ type parallelTxManager struct {
 	mu  sync.RWMutex
 	cms sdk.CacheMultiStore
 
-	cc              *conflictCheck
+	dirtyKey        map[string][]byte
 	currIndex       int
 	runBase         map[int]int
 	markFailedStats map[int]bool
 	commitDone      chan struct{}
 }
 
-type conflictCheck struct {
-	items map[string][]byte
-}
-
-func newConflictCheck() *conflictCheck {
-	return &conflictCheck{
-		items: make(map[string][]byte),
-	}
-}
-
-func (c *conflictCheck) update(key string, value []byte) {
-	c.items[key] = value
-}
-func (c *conflictCheck) clear() {
-	c.items = make(map[string][]byte, 0)
-}
-
 var (
 	whiteAcc = string(hexutil.MustDecode("0x01f1829676db577682e944fc3493d451b67ff3e29f")) //fee
 )
-
-func (c *conflictCheck) isConflict(key string, vaule []byte) bool {
-	if key == whiteAcc {
-		return false
-	}
-
-	if dirtyItem, ok := c.items[key]; ok {
-		if !bytes.Equal(vaule, dirtyItem) {
-			return true
-		}
-	}
-	return false
-}
 
 type task struct {
 	txBytes []byte
@@ -642,7 +617,7 @@ func newParallelTxManager() *parallelTxManager {
 		nextTxInGroup: make(map[int]int),
 		preTxInGroup:  make(map[int]int),
 
-		cc:              newConflictCheck(),
+		dirtyKey:        make(map[string][]byte),
 		currIndex:       -1,
 		runBase:         make(map[int]int),
 		markFailedStats: make(map[int]bool),
@@ -661,7 +636,7 @@ func (f *parallelTxManager) clear() {
 	f.preTxInGroup = make(map[int]int)
 	f.runBase = make(map[int]int)
 	f.currIndex = -1
-	f.cc.clear()
+	f.dirtyKey = make(map[string][]byte)
 	f.markFailedStats = make(map[int]bool)
 
 	f.workgroup.runningStatus = make(map[int]int)
@@ -738,7 +713,7 @@ func (f *parallelTxManager) SetCurrentIndex(d int, res *executeResult) {
 	chanStop := make(chan struct{}, 0)
 	go func() {
 		for k, v := range res.writeList {
-			f.cc.update(k, v)
+			f.dirtyKey[k] = v
 		}
 		chanStop <- struct{}{}
 	}()
