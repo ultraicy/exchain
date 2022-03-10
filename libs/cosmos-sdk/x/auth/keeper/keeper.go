@@ -95,7 +95,7 @@ func (ak AccountKeeper) GetPubKey(ctx sdk.Context, addr sdk.AccAddress) (crypto.
 
 // GetSequence Returns the Sequence of the account at address
 func (ak AccountKeeper) GetSequence(ctx sdk.Context, addr sdk.AccAddress) (uint64, error) {
-	logrusplugin.Info("count", "count", atomic.AddInt32(&ak.count, 1))
+	logrusplugin.Info("count", "count", atomic.AddInt32(&ak.count, 1),"add",addr.String())
 	acc := ak.GetAccount(ctx, addr)
 	if acc == nil {
 		return 0, sdkerrors.Wrapf(sdkerrors.ErrUnknownAddress, "account %s does not exist", addr)
