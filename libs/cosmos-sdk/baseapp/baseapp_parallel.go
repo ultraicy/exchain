@@ -430,13 +430,11 @@ func (e executeResult) Conflict(dirty map[string][]byte) bool {
 	}
 
 	for key, v := range e.readList {
-
 		if dirtyItem, ok := dirty[key]; ok {
 			if !bytes.Equal(v, dirtyItem) {
 				return true
 			}
 		}
-		return false
 	}
 
 	return false
