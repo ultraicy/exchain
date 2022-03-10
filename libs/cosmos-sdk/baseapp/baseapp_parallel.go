@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
 	"sync"
 
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
@@ -248,14 +249,14 @@ func (e executeResult) Conflict(cache *asyncCache) bool {
 		return true //TODO fix later
 	}
 
-	e.ms.IteratorCache(func(key, value []byte, isDirty bool) bool {
+	e.ms.IteratorCache(func(key, value []byte, isDirty bool, idDelete bool, sKey types.StoreKey) bool {
 		//the key we have read was wrote by pre txs
 		if cache.Has(key) && !whiteAccountList[hex.EncodeToString(key)] {
 			rerun = true
 			return false // break
 		}
 		return true
-	})
+	}, nil)
 	return rerun
 }
 
@@ -269,13 +270,13 @@ func (e executeResult) Collect(cache *asyncCache) {
 	if e.ms == nil {
 		return
 	}
-	e.ms.IteratorCache(func(key, value []byte, isDirty bool) bool {
+	e.ms.IteratorCache(func(key, value []byte, isDirty bool, idDelete bool, sKey types.StoreKey) bool {
 		if isDirty {
 			//push every data we have written in current tx
 			cache.Push(key, value)
 		}
 		return true
-	})
+	}, nil)
 }
 
 func (e executeResult) GetCounter() uint32 {

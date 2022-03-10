@@ -21,10 +21,10 @@ import (
 // If value is nil but deleted is false, it means the parent doesn't have the
 // key.  (No need to delete upon Write())
 type cValue struct {
-	preValue []byte
-	value    []byte
-	deleted  bool
-	dirty    bool
+	initValue []byte
+	value     []byte
+	deleted   bool
+	dirty     bool
 }
 
 // Store wraps an in-memory cache around an underlying types.KVStore.
@@ -63,7 +63,6 @@ func (store *Store) Get(key []byte) (value []byte) {
 	if !ok {
 		value = store.parent.Get(key)
 		store.setCacheValue(key, value, false, false)
-
 	} else {
 		value = cacheValue.value
 	}
@@ -71,7 +70,7 @@ func (store *Store) Get(key []byte) (value []byte) {
 	return value
 }
 
-func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool) bool) bool {
+func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, sKey types.StoreKey) bool, sKey types.StoreKey) bool {
 	if cb == nil || len(store.cache) == 0 {
 		return true
 	}
@@ -79,11 +78,18 @@ func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool) bool)
 	defer store.mtx.Unlock()
 
 	for key, v := range store.cache {
-		if !cb([]byte(key), v.value, v.dirty) {
+		if !cb([]byte(key), v.value, v.dirty, v.deleted, sKey) {
 			return false
 		}
 	}
 	return true
+}
+
+func (store *Store) GetRWSet(rSet map[string][]byte, wSet map[string][]byte) {
+	for k, v := range store.cache {
+		wSet[k] = v.value
+		rSet[k] = v.initValue
+	}
 }
 
 // Implements types.KVStore.
@@ -319,9 +325,9 @@ func (store *Store) setCacheValue(key, value []byte, deleted bool, dirty bool) {
 	}
 	if dirty {
 		store.unsortedCache[keyStr] = struct{}{}
-		cc.preValue = store.cache[keyStr].preValue
+		cc.initValue = store.cache[keyStr].initValue
 	} else {
-		cc.preValue = value
+		cc.initValue = value
 	}
 	store.cache[keyStr] = cc
 }
