@@ -49,7 +49,7 @@ func (app *BaseApp) getExtraDataByTxs(txs [][]byte) []*extraDataForTx {
 				res[index] = &extraDataForTx{}
 				return
 			}
-			coin, isEvm, s := app.getTxFee(app.getContextForTx(runTxModeDeliver, txBytes), tx)
+			coin, isEvm, s, _ := app.getTxFee(app.getContextForTx(runTxModeDeliver, txBytes), tx)
 			res[index] = &extraDataForTx{
 				fee:       coin,
 				isEvm:     isEvm,

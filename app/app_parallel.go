@@ -1,6 +1,7 @@
 package app
 
 import (
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth"
 	authante "github.com/okex/exchain/libs/cosmos-sdk/x/auth/ante"
@@ -19,9 +20,10 @@ func updateFeeCollectorHandler(bk bank.Keeper, sk supply.Keeper) sdk.UpdateFeeCo
 
 // evmTxFeeHandler get tx fee for evm tx
 func evmTxFeeHandler() sdk.GetTxFeeHandler {
-	return func(ctx sdk.Context, tx sdk.Tx) (fee sdk.Coins, isEvm bool, signCache sdk.SigCache) {
+	return func(ctx sdk.Context, tx sdk.Tx) (fee sdk.Coins, isEvm bool, signCache sdk.SigCache, toAddress *ethcommon.Address) {
 		if evmTx, ok := tx.(evmtypes.MsgEthereumTx); ok {
 			isEvm = true
+			toAddress = evmTx.To()
 			signCache, _ = evmTx.VerifySig(evmTx.ChainID(), ctx.BlockHeight(), ctx.TxBytes(), ctx.SigCache())
 
 		}
