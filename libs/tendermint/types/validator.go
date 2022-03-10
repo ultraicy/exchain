@@ -88,13 +88,14 @@ func ValidatorListString(vals []*Validator) string {
 // as its redundant with the pubkey. This also excludes ProposerPriority
 // which changes every round.
 func (v *Validator) Bytes() []byte {
-	//return cdcEncode(struct {
-	//	PubKey      crypto.PubKey
-	//	VotingPower int64
-	//}{
-	//	v.PubKey,
-	//	v.VotingPower,
-	//})
+
+	return cdcEncode(struct {
+		PubKey      crypto.PubKey
+		VotingPower int64
+	}{
+		v.PubKey,
+		v.VotingPower,
+	})
 
 	pk, err := ce.PubKeyToProto(v.PubKey)
 	if err != nil {

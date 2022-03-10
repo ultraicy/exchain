@@ -62,8 +62,8 @@ func PubKeyFromProto(k *pc.PublicKey) (crypto.PubKey, error) {
 //	}
 //	return kp, nil
 //}
-
-// PrivKeyFromProto takes a protobuf PrivateKey and transforms it to a crypto.PrivKey
+//
+//// PrivKeyFromProto takes a protobuf PrivateKey and transforms it to a crypto.PrivKey
 //func PrivKeyFromProto(k pc.PrivateKey) (crypto.PrivKey, error) {
 //	switch k := k.Sum.(type) {
 //	case *pc.PrivateKey_Ed25519:

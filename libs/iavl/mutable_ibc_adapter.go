@@ -7,6 +7,7 @@ import (
 )
 
 func (t *ImmutableTree) GetMembershipProof(key []byte) (*ics23.CommitmentProof, error) {
+	panic("asd")
 	exist, err := createExistenceProof(t, key)
 	if err != nil {
 		return nil, err
@@ -51,7 +52,6 @@ func convertLeafOp(version int64) *ics23.LeafOp {
 	}
 }
 
-
 // we cannot get the proofInnerNode type, so we need to do the whole path in one function
 func convertInnerOps(path PathToLeaf) []*ics23.InnerOp {
 	steps := make([]*ics23.InnerOp, 0, len(path))
@@ -94,12 +94,10 @@ func convertInnerOps(path PathToLeaf) []*ics23.InnerOp {
 	return steps
 }
 
-
 func convertVarIntToBytes(orig int64, buf [binary.MaxVarintLen64]byte) []byte {
 	n := binary.PutVarint(buf[:], orig)
 	return buf[:n]
 }
-
 
 /*
 GetNonMembershipProof will produce a CommitmentProof that the given key doesn't exist in the iavl tree.

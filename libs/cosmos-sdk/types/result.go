@@ -107,7 +107,7 @@ func NewABCIMessageLog(i uint16, log string, events Events) ABCIMessageLog {
 	return ABCIMessageLog{
 		MsgIndex: i,
 		Log:      log,
-		Events:   StringifyEvents(events),
+		Events:   StringifyEvents(events.ToABCIEvents()),
 	}
 }
 

@@ -611,7 +611,8 @@ func (tree *MutableTree) SaveVersionSync(version int64, useDeltas bool) ([]byte,
 				}
 				sort.Strings(ks)
 				for _, k := range ks {
-					sb.WriteString(fmt.Sprintf("%s:%s;", hex.EncodeToString([]byte(k)), hex.EncodeToString(tree.savedNodes[k].hash)))
+
+					sb.WriteString(fmt.Sprintf("%s:%s:%s;", hex.EncodeToString([]byte(tree.savedNodes[k].key)), hex.EncodeToString([]byte(tree.savedNodes[k].value)), hex.EncodeToString(tree.savedNodes[k].hash)))
 					//acc, err := sdk.AccAddressFromHex(hex.EncodeToString([]byte(k)))
 					//if nil != err {
 					//	panic(err)

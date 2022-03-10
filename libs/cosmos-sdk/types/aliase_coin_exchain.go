@@ -96,28 +96,12 @@ func ZeroFee() Coin {
 // ValidateDenom validates a denomination string returning an error if it is
 // invalid.
 func ValidateDenom(denom string) error {
-	return nil
-//<<<<<<< HEAD
-//	// TODO ,height
-//	if !validIBCCoinDenom(denom) {
-//=======
-//	if denom == DefaultBondDenom {
-//		return nil
-//	}
-//	if !reDnm.MatchString(denom) && !rePoolTokenDnm.MatchString(denom) {
-//>>>>>>> 34a3dd8fdf9a78851d72e4f59128d947fb22ad9a
-//		return fmt.Errorf("invalid denom: %s", denom)
-//	}
-
-	//if global.IBCEnable{
-	//	if !validIBCCoinDenom(denom){
-	//		return fmt.Errorf("invalid denom: %s", denom)
-	//	}
-	//}else{
-	//	if !reDnm.MatchString(denom) && !rePoolTokenDnm.MatchString(denom) {
-	//		return fmt.Errorf("invalid denom: %s", denom)
-	//	}
-	//}
+	if denom == DefaultBondDenom {
+		return nil
+	}
+	if !reDnm.MatchString(denom) && !rePoolTokenDnm.MatchString(denom) {
+		return fmt.Errorf("invalid denom: %s", denom)
+	}
 	return nil
 }
 
