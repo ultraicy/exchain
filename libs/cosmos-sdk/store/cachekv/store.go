@@ -127,9 +127,10 @@ func (store *Store) Write() {
 	// We need a copy of all of the keys.
 	// Not the best, but probably not a bottleneck depending.
 	keys := make([]string, 0, len(store.cache))
-	for key, _ := range store.cache {
-		keys = append(keys, key)
-
+	for key, dbValue := range store.cache {
+		if dbValue.dirty {
+			keys = append(keys, key)
+		}
 	}
 
 	sort.Strings(keys)
@@ -160,6 +161,9 @@ func (store *Store) writeToCacheKv(parent *Store) {
 	// TODO: Consider allowing usage of Batch, which would allow the write to
 	// at least happen atomically.
 	for key, cacheValue := range store.cache {
+		if !cacheValue.dirty {
+			continue
+		}
 		switch {
 		case cacheValue.deleted:
 			parent.Delete(amino.StrToBytes(key))
@@ -176,9 +180,6 @@ func (store *Store) writeToCacheKv(parent *Store) {
 
 func (store *Store) clearCache() {
 	// https://github.com/golang/go/issues/20138
-	for key := range store.cache {
-		delete(store.cache, key)
-	}
 	for key := range store.cache {
 		delete(store.cache, key)
 	}
