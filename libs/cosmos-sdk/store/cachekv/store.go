@@ -21,16 +21,16 @@ import (
 // If value is nil but deleted is false, it means the parent doesn't have the
 // key.  (No need to delete upon Write())
 type cValue struct {
-	value   []byte
-	deleted bool
-	dirty   bool
+	preValue []byte
+	value    []byte
+	deleted  bool
+	dirty    bool
 }
 
 // Store wraps an in-memory cache around an underlying types.KVStore.
 type Store struct {
 	mtx           sync.Mutex
 	cache         map[string]cValue
-	readList      map[string][]byte
 	unsortedCache map[string]struct{}
 	sortedCache   *list.List // always ascending sorted
 	parent        types.KVStore
@@ -41,7 +41,6 @@ var _ types.CacheKVStore = (*Store)(nil)
 func NewStore(parent types.KVStore) *Store {
 	return &Store{
 		cache:         make(map[string]cValue),
-		readList:      make(map[string][]byte),
 		unsortedCache: make(map[string]struct{}),
 		sortedCache:   list.New(),
 		parent:        parent,
@@ -60,15 +59,11 @@ func (store *Store) Get(key []byte) (value []byte) {
 
 	types.AssertValidKey(key)
 
-	sKey := string(key)
-	cacheValue, ok := store.cache[sKey]
+	cacheValue, ok := store.cache[string(key)]
 	if !ok {
-		if readValue, ok := store.readList[sKey]; ok {
-			value = readValue
-		} else {
-			value = store.parent.Get(key)
-			store.setCacheValue(key, value, false, false)
-		}
+		value = store.parent.Get(key)
+		store.setCacheValue(key, value, false, false)
+
 	} else {
 		value = cacheValue.value
 	}
@@ -315,16 +310,17 @@ func (store *Store) dirtyItems(start, end []byte) {
 // Only entrypoint to mutate store.cache.
 func (store *Store) setCacheValue(key, value []byte, deleted bool, dirty bool) {
 	keyStr := string(key)
-	if !dirty {
-		store.readList[keyStr] = value
-		return
-	}
-	store.cache[keyStr] = cValue{
+
+	cc := cValue{
 		value:   value,
 		deleted: deleted,
 		dirty:   dirty,
 	}
 	if dirty {
 		store.unsortedCache[keyStr] = struct{}{}
+		cc.preValue = store.cache[keyStr].preValue
+	} else {
+		cc.preValue = value
 	}
+	store.cache[keyStr] = cc
 }
