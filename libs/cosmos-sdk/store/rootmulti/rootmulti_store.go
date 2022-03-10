@@ -602,6 +602,9 @@ func (rs *Store) GetStore(key types.StoreKey) types.Store {
 // NOTE: The returned KVStore may be wrapped in an inter-block cache if it is
 // set on the root store.
 func (rs *Store) GetKVStore(key types.StoreKey) types.KVStore {
+	if key.Name() == "acc" {
+		key.Name()
+	}
 	store := rs.stores[key].(types.KVStore)
 
 	if rs.TracingEnabled() {
@@ -998,7 +1001,7 @@ func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore
 	keys := make([]string, 0)
 	//values := make([]string, 0)
 	for key, store := range storeMap {
-		if key.Name() == "evm" {
+		if key.Name() == "acc" {
 			key.Name()
 		}
 		commitID, outputDelta := store.CommitterCommit(inputDeltaMap[key.Name()]) // CommitterCommit

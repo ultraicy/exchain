@@ -8,9 +8,9 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth/exported"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
 	types2 "github.com/okex/exchain/temp"
+	"github.com/tendermint/go-amino"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"github.com/tendermint/go-amino"
 )
 
 // NewAccountWithAddress implements sdk.AccountKeeper.
@@ -121,6 +121,7 @@ func (ak AccountKeeper) Accounts(ctx context.Context, request *types.QueryAccoun
 }
 
 func (ak AccountKeeper) Account(conte context.Context, req *types.QueryAccountRequest) (*types.QueryAccountResponse, error) {
+	panic("asd")
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "empty request")
 	}
