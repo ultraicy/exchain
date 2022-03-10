@@ -21,16 +21,16 @@ import (
 // If value is nil but deleted is false, it means the parent doesn't have the
 // key.  (No need to delete upon Write())
 type cValue struct {
-	value   []byte
-	deleted bool
-	dirty   bool
+	initValue []byte
+	value     []byte
+	deleted   bool
+	dirty     bool
 }
 
 // Store wraps an in-memory cache around an underlying types.KVStore.
 type Store struct {
-	mtx   sync.Mutex
-	cache map[string]cValue
-	//readList      map[string][]byte
+	mtx           sync.Mutex
+	cache         map[string]cValue
 	unsortedCache map[string]struct{}
 	sortedCache   *list.List // always ascending sorted
 	parent        types.KVStore
@@ -40,8 +40,7 @@ var _ types.CacheKVStore = (*Store)(nil)
 
 func NewStore(parent types.KVStore) *Store {
 	return &Store{
-		cache: make(map[string]cValue),
-		//readList:      make(map[string][]byte),
+		cache:         make(map[string]cValue),
 		unsortedCache: make(map[string]struct{}),
 		sortedCache:   list.New(),
 		parent:        parent,
@@ -88,10 +87,8 @@ func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDel
 
 func (store *Store) GetRWSet(rSet map[string][]byte, wSet map[string][]byte) {
 	for k, v := range store.cache {
-		if v.dirty {
-			wSet[k] = v.value
-		}
-		//rSet[k] = store.readList[k]
+		wSet[k] = v.value
+		rSet[k] = v.initValue
 	}
 }
 
@@ -192,10 +189,6 @@ func (store *Store) clearCache() {
 	for key := range store.cache {
 		delete(store.cache, key)
 	}
-	//
-	//for Key := range store.readList {
-	//	delete(store.readList, Key)
-	//}
 	for key := range store.unsortedCache {
 		delete(store.unsortedCache, key)
 	}
@@ -323,28 +316,18 @@ func (store *Store) dirtyItems(start, end []byte) {
 
 // Only entrypoint to mutate store.cache.
 func (store *Store) setCacheValue(key, value []byte, deleted bool, dirty bool) {
-	/*
-		// UnsafeBytesToStr is meant to make a zero allocation conversion
-		// from []byte -> string to speed up operations, it is not meant
-		// to be used generally, but for a specific pattern to delete keys
-		// from a map.
-		func UnsafeBytesToStr(b []byte) string {
-			return *(*string)(unsafe.Pointer(&b))
-		}
-	*/
-
 	keyStr := string(key)
-	//if !dirty {
-	//	store.readList[keyStr] = value
-	//	//return
-	//}
 
-	store.cache[keyStr] = cValue{
+	cc := cValue{
 		value:   value,
 		deleted: deleted,
 		dirty:   dirty,
 	}
 	if dirty {
 		store.unsortedCache[keyStr] = struct{}{}
+		cc.initValue = store.cache[keyStr].initValue
+	} else {
+		cc.initValue = value
 	}
+	store.cache[keyStr] = cc
 }
