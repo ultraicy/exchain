@@ -21,16 +21,16 @@ import (
 // If value is nil but deleted is false, it means the parent doesn't have the
 // key.  (No need to delete upon Write())
 type cValue struct {
-	initValue []byte
-	value     []byte
-	deleted   bool
-	dirty     bool
+	value   []byte
+	deleted bool
+	dirty   bool
 }
 
 // Store wraps an in-memory cache around an underlying types.KVStore.
 type Store struct {
 	mtx           sync.Mutex
 	cache         map[string]cValue
+	read          map[string][]byte
 	unsortedCache map[string]struct{}
 	sortedCache   *list.List // always ascending sorted
 	parent        types.KVStore
@@ -41,6 +41,7 @@ var _ types.CacheKVStore = (*Store)(nil)
 func NewStore(parent types.KVStore) *Store {
 	return &Store{
 		cache:         make(map[string]cValue),
+		read:          make(map[string][]byte),
 		unsortedCache: make(map[string]struct{}),
 		sortedCache:   list.New(),
 		parent:        parent,
@@ -59,10 +60,16 @@ func (store *Store) Get(key []byte) (value []byte) {
 
 	types.AssertValidKey(key)
 
-	cacheValue, ok := store.cache[string(key)]
+	keyStr := string(key)
+	cacheValue, ok := store.cache[keyStr]
 	if !ok {
-		value = store.parent.Get(key)
-		store.setCacheValue(key, value, false, false)
+		if initValue, ok := store.read[keyStr]; ok {
+			value = initValue
+		} else {
+			value = store.parent.Get(key)
+			store.setCacheValue(key, value, false, false)
+		}
+
 	} else {
 		value = cacheValue.value
 	}
@@ -90,7 +97,9 @@ func (store *Store) GetRWSet(rSet map[string][]byte, wSet map[string][]byte) {
 		if v.dirty {
 			wSet[k] = v.value
 		}
-		rSet[k] = v.initValue
+	}
+	for k, v := range store.read {
+		rSet[k] = v
 	}
 }
 
@@ -190,6 +199,9 @@ func (store *Store) clearCache() {
 	// https://github.com/golang/go/issues/20138
 	for key := range store.cache {
 		delete(store.cache, key)
+	}
+	for key := range store.read {
+		delete(store.read, key)
 	}
 	for key := range store.unsortedCache {
 		delete(store.unsortedCache, key)
@@ -320,16 +332,20 @@ func (store *Store) dirtyItems(start, end []byte) {
 func (store *Store) setCacheValue(key, value []byte, deleted bool, dirty bool) {
 	keyStr := string(key)
 
-	cc := cValue{
+	if !dirty {
+		store.read[keyStr] = value
+		return
+	}
+
+	if dirty {
+		store.unsortedCache[keyStr] = struct{}{}
+		//cc.initValue = store.cache[keyStr].initValue
+	} else {
+		//cc.initValue = value
+	}
+	store.cache[keyStr] = cValue{
 		value:   value,
 		deleted: deleted,
 		dirty:   dirty,
 	}
-	if dirty {
-		store.unsortedCache[keyStr] = struct{}{}
-		cc.initValue = store.cache[keyStr].initValue
-	} else {
-		cc.initValue = value
-	}
-	store.cache[keyStr] = cc
 }
