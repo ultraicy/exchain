@@ -315,7 +315,7 @@ func (store *Store) dirtyItems(start, end []byte) {
 // Only entrypoint to mutate store.cache.
 func (store *Store) setCacheValue(key, value []byte, deleted bool, dirty bool) {
 	keyStr := string(key)
-	if dirty {
+	if !dirty {
 		store.readList[keyStr] = value
 		return
 	}
