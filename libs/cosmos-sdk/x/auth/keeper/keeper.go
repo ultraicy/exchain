@@ -1,9 +1,9 @@
 package keeper
 
 import (
+	"encoding/hex"
 	"fmt"
 	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
-	"sync/atomic"
 
 	"github.com/okex/exchain/libs/tendermint/crypto"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
@@ -16,7 +16,6 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/x/params/subspace"
 )
 
-var count int32
 
 // AccountKeeper encodes/decodes accounts using the go-amino (binary)
 // encoding/decoding library.
@@ -85,7 +84,6 @@ func (ak AccountKeeper) Logger(ctx sdk.Context) log.Logger {
 
 // GetPubKey Returns the PubKey of the account at address
 func (ak AccountKeeper) GetPubKey(ctx sdk.Context, addr sdk.AccAddress) (crypto.PubKey, error) {
-	logrusplugin.Info("count", "count", atomic.AddInt32(&count, 1))
 	acc := ak.GetAccount(ctx, addr)
 	if acc == nil {
 		return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownAddress, "account %s does not exist", addr)
@@ -95,7 +93,6 @@ func (ak AccountKeeper) GetPubKey(ctx sdk.Context, addr sdk.AccAddress) (crypto.
 
 // GetSequence Returns the Sequence of the account at address
 func (ak AccountKeeper) GetSequence(ctx sdk.Context, addr sdk.AccAddress) (uint64, error) {
-	logrusplugin.Info("count", "count", atomic.AddInt32(&count, 1), "add", addr.String())
 	acc := ak.GetAccount(ctx, addr)
 	if acc == nil {
 		return 0, sdkerrors.Wrapf(sdkerrors.ErrUnknownAddress, "account %s does not exist", addr)
@@ -106,7 +103,6 @@ func (ak AccountKeeper) GetSequence(ctx sdk.Context, addr sdk.AccAddress) (uint6
 // GetNextAccountNumber returns and increments the global account number counter.
 // If the global account number is not set, it initializes it with value 0.
 func (ak AccountKeeper) GetNextAccountNumber(ctx sdk.Context) uint64 {
-	logrusplugin.Info("count", "count", atomic.AddInt32(&count, 1))
 	var accNumber uint64
 	store := ctx.KVStore(ak.key)
 	bz := store.Get(types.GlobalAccountNumberKey)
@@ -122,6 +118,7 @@ func (ak AccountKeeper) GetNextAccountNumber(ctx sdk.Context) uint64 {
 
 	bz = ak.cdc.MustMarshalBinaryLengthPrefixed(accNumber + 1)
 	store.Set(types.GlobalAccountNumberKey, bz)
+	logrusplugin.Error("getAccountNumber","key",hex.EncodeToString(types.GlobalAccountNumberKey))
 
 	return accNumber
 }
@@ -129,11 +126,8 @@ func (ak AccountKeeper) GetNextAccountNumber(ctx sdk.Context) uint64 {
 // -----------------------------------------------------------------------------
 // Misc.
 func Reset() {
-	logrusplugin.Error("count", "finalCount", atomic.LoadInt32(&count))
-	count = 0
 }
 func (ak AccountKeeper) decodeAccount(bz []byte) (acc exported.Account) {
-	logrusplugin.Info("count", "count", atomic.AddInt32(&count, 1))
 	val, err := ak.cdc.UnmarshalBinaryBareWithRegisteredUnmarshaller(bz, &acc)
 	if err == nil {
 		acc = val.(exported.Account)
