@@ -149,8 +149,9 @@ type BaseApp struct { // nolint: maligned
 	//
 	// checkState is set on InitChain and reset on Commit
 	// deliverState is set on InitChain and BeginBlock and set to nil on Commit
-	checkState   *state // for CheckTx
-	deliverState *state // for DeliverTx
+	checkState         *state // for CheckTx
+	deliverState       *state // for DeliverTx
+	deliverStateMsChan chan struct{}
 
 	// an inter-block write-through cache provided to the context during deliverState
 	interBlockCache sdk.MultiStorePersistentCache
@@ -218,6 +219,8 @@ func NewBaseApp(
 		queryRouter:    NewQueryRouter(),
 		fauxMerkleMode: false,
 		trace:          false,
+
+		deliverStateMsChan: make(chan struct{}, 0),
 
 		parallelTxManage: newParallelTxManager(),
 		chainCache:       sdk.NewChainCache(),
