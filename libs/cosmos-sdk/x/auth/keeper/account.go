@@ -3,6 +3,7 @@ package keeper
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
 	codectypes "github.com/okex/exchain/libs/cosmos-sdk/codec/types"
@@ -33,6 +34,16 @@ func (ak AccountKeeper) NewAccount(ctx sdk.Context, acc exported.Account) export
 	return acc
 }
 
+// GetAllAccounts returns all accounts in the accountKeeper.
+func (ak AccountKeeper) GetAllAccounts(ctx sdk.Context) (accounts []exported.Account) {
+	ak.IterateAccounts(ctx,
+		func(acc exported.Account) (stop bool) {
+			accounts = append(accounts, acc)
+			return false
+		})
+	return accounts
+}
+
 // GetAccount implements sdk.AccountKeeper.
 func (ak AccountKeeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) exported.Account {
 
@@ -46,7 +57,7 @@ func (ak AccountKeeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) exporte
 	}
 	store := ctx.KVStore(ak.key)
 	bz := store.Get(types.AddressStoreKey(addr))
-	logrusplugin.Error("GetAccount", "key", hex.EncodeToString(types.AddressStoreKey(addr)), "addr", addr.String())
+	logrusplugin.Error("GetAccount", "info", fmt.Sprintf("%s:%s", hex.EncodeToString(types.AddressStoreKey(addr)), addr.String()))
 	if bz == nil {
 		ctx.Cache().UpdateAccount(addr, nil, len(bz), false)
 		return nil
@@ -54,16 +65,6 @@ func (ak AccountKeeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) exporte
 	acc := ak.decodeAccount(bz)
 	ctx.Cache().UpdateAccount(addr, acc, len(bz), false)
 	return acc
-}
-
-// GetAllAccounts returns all accounts in the accountKeeper.
-func (ak AccountKeeper) GetAllAccounts(ctx sdk.Context) (accounts []exported.Account) {
-	ak.IterateAccounts(ctx,
-		func(acc exported.Account) (stop bool) {
-			accounts = append(accounts, acc)
-			return false
-		})
-	return accounts
 }
 
 // SetAccount implements sdk.AccountKeeper.
@@ -79,7 +80,7 @@ func (ak AccountKeeper) SetAccount(ctx sdk.Context, acc exported.Account) {
 	}
 	store.Set(types.AddressStoreKey(addr), bz)
 	ctx.Cache().UpdateAccount(acc.GetAddress(), acc, len(bz), true)
-	logrusplugin.Error("SetAccount", "key", hex.EncodeToString(types.AddressStoreKey(addr)),"acc", acc.GetAddress().String())
+	logrusplugin.Error("SetAccount", "info", fmt.Sprintf("%s:%s", hex.EncodeToString(types.AddressStoreKey(addr)), addr.String()))
 	if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
 		if ak.observers != nil {
 			for _, observer := range ak.observers {
@@ -99,7 +100,7 @@ func (ak AccountKeeper) RemoveAccount(ctx sdk.Context, acc exported.Account) {
 	store.Delete(types.AddressStoreKey(addr))
 	ctx.Cache().UpdateAccount(addr, nil, 0, true)
 
-	logrusplugin.Error("RemoveAccount", "key", hex.EncodeToString(types.AddressStoreKey(addr)), "addr", addr.String())
+	logrusplugin.Error("RemoveAccount", "info", fmt.Sprintf("%s:%s", hex.EncodeToString(types.AddressStoreKey(addr)), addr.String()))
 
 }
 
