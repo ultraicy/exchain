@@ -2,7 +2,11 @@ package state
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
+	"strings"
 
 	"github.com/tendermint/go-amino"
 
@@ -376,6 +380,13 @@ func (arz *ABCIResponses) Bytes() []byte {
 }
 
 func (arz *ABCIResponses) ResultsHash() []byte {
+	sb := strings.Builder{}
+	s := sha256.New()
+	for _, v := range arz.DeliverTxs {
+		sb.WriteString(fmt.Sprintf("%d:%s;", v.Code, hex.EncodeToString(s.Sum(v.Data))))
+	}
+	sb.WriteString("\n")
+	logrusplugin.Error("resultHash", "结果为", sb.String())
 	results := types.NewResults(arz.DeliverTxs)
 	return results.Hash()
 }
