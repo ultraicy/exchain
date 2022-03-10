@@ -7,8 +7,8 @@ import (
 	bytes "bytes"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
-	proto "github.com/gogo/protobuf/proto"
-	"io"
+	proto "github.com/golang/protobuf/proto"
+	io "io"
 	math "math"
 	math_bits "math/bits"
 )
@@ -22,6 +22,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // App includes the protocol and software version for the application.
 // This information is included in ResponseInfo. The App.Protocol can be

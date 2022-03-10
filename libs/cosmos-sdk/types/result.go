@@ -107,7 +107,7 @@ func NewABCIMessageLog(i uint16, log string, events Events) ABCIMessageLog {
 	return ABCIMessageLog{
 		MsgIndex: i,
 		Log:      log,
-		Events:   StringifyEvents(events.ToABCIEvents()),
+		Events:   StringifyEvents(events),
 	}
 }
 
@@ -361,8 +361,6 @@ func ParseABCILogs(logs string) (res ABCIMessageLogs, err error) {
 	err = json.Unmarshal([]byte(logs), &res)
 	return res, err
 }
-
-
 
 // WrapServiceResult wraps a result from a protobuf RPC service method call in
 // a Result object or error. This method takes care of marshaling the res param to

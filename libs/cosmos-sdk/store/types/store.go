@@ -281,10 +281,10 @@ type CacheWrapper interface { //nolint
 // CommitID
 
 // CommitID contains the tree version number and its merkle root.
-type CommitID struct {
-	Version int64
-	Hash    []byte
-}
+//type CommitID struct {
+//	Version int64
+//	Hash    []byte
+//}
 
 func (cid CommitID) IsZero() bool { //nolint
 	return cid.Version == 0 && len(cid.Hash) == 0
@@ -363,7 +363,6 @@ func (key *TransientStoreKey) String() string {
 	return fmt.Sprintf("TransientStoreKey{%p, %s}", key, key.name)
 }
 
-
 // MemoryStoreKey defines a typed key to be used with an in-memory KVStore.
 type MemoryStoreKey struct {
 	name string
@@ -382,7 +381,6 @@ func (key *MemoryStoreKey) Name() string {
 func (key *MemoryStoreKey) String() string {
 	return fmt.Sprintf("MemoryStoreKey{%p, %s}", key, key.name)
 }
-
 
 //----------------------------------------
 
