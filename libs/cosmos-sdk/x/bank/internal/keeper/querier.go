@@ -36,12 +36,11 @@ func NewQuerier(k Keeper) sdk.Querier {
 // queryBalance fetch an account's balance for the supplied height.
 // Height and account address are passed as first and second path components respectively.
 func queryBalance(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, error) {
+	var ret []byte
 	var params types.QueryBalanceParams
-
 	if err := types.ModuleCdc.UnmarshalJSON(req.Data, &params); err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
-
 	coins := k.GetCoins(ctx, params.Address)
 	if coins == nil {
 		coins = sdk.NewCoins()
@@ -51,8 +50,9 @@ func queryBalance(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, err
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
+	ret = bz
 
-	return bz, nil
+	return ret, nil
 }
 
 func grpcQueryBalanceAdapter(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, error) {
