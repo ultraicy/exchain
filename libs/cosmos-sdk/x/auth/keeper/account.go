@@ -122,6 +122,7 @@ func (ak AccountKeeper) IterateAccounts(ctx sdk.Context, cb func(account exporte
 	}
 }
 
+
 var (
 	_ types.QueryServer = (*AccountKeeper)(nil)
 )
@@ -131,7 +132,6 @@ func (ak AccountKeeper) Accounts(ctx context.Context, request *types.QueryAccoun
 }
 
 func (ak AccountKeeper) Account(conte context.Context, req *types.QueryAccountRequest) (*types.QueryAccountResponse, error) {
-	panic("asd")
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "empty request")
 	}

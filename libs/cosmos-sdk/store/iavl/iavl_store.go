@@ -1,7 +1,6 @@
 package iavl
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	ics23 "github.com/confio/ics23/go"
@@ -194,18 +193,12 @@ func (st *Store) CacheWrapWithTrace(w io.Writer, tc types.TraceContext) types.Ca
 func (st *Store) Set(key, value []byte) {
 	types.AssertValidValue(value)
 	st.tree.Set(key, value)
-	if hex.EncodeToString(key) == "0188688ae1f6ad78bb3d3fd60c773f0c7aace96f9d" {
-		fmt.Println(1)
-	}
 	st.setFlatKV(key, value)
 }
 
 // Implements types.KVStore.
 func (st *Store) Get(key []byte) []byte {
 	value := st.getFlatKV(key)
-	if hex.EncodeToString(key) == "0188688ae1f6ad78bb3d3fd60c773f0c7aace96f9d" {
-		fmt.Println(2)
-	}
 	if value != nil {
 		return value
 	}
@@ -288,7 +281,6 @@ func getHeight(tree Tree, req abci.RequestQuery) int64 {
 // if you care to have the latest data to see a tx results, you must
 // explicitly set the height you want to see
 func (st *Store) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
-	panic("asd")
 	if types2.HigherThanIBCHeight(req.Height) {
 		return st.queryKeyForIBC(req)
 	}
