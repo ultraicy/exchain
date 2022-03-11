@@ -525,7 +525,7 @@ func (a *asyncWorkGroup) AddTask(tx []byte, index int) {
 }
 
 func (a *asyncWorkGroup) Start() {
-	for index := 0; index < 64; index++ {
+	for index := 0; index < 128; index++ {
 		go func() {
 			for true {
 				select {
