@@ -442,7 +442,7 @@ func (rs *Store) CommitterCommitMap(inputDeltaMap iavltree.TreeDeltaMap) (types.
 	version := previousHeight + 1
 
 	var outputDeltaMap iavltree.TreeDeltaMap
-	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.getStores(), inputDeltaMap)
+	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.getStores(version), inputDeltaMap)
 
 	if !iavltree.EnableAsyncCommit {
 		// Determine if pruneHeight height needs to be added to the list of heights to
@@ -503,7 +503,8 @@ func (rs *Store) pruneStores() {
 			rs.logger.Info("pruning end")
 		}
 	}()
-	for key, store := range rs.stores {
+	stores := rs.getStores(rs.lastCommitInfo.Version + 1)
+	for key, store := range stores {
 		if store.GetStoreType() == types.StoreTypeIAVL {
 			// If the store is wrapped with an inter-block cache, we must first unwrap
 			// it to get the underlying IAVL store.
