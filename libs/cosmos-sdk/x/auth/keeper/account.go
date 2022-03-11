@@ -2,8 +2,6 @@ package keeper
 
 import (
 	"context"
-	"encoding/hex"
-	"fmt"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	//logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
 
@@ -58,9 +56,8 @@ func (ak AccountKeeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) exporte
 		return data.Copy().(exported.Account)
 	}
 	store := ctx.KVStore(ak.key)
-	if hex.EncodeToString(types.AddressStoreKey(addr)) == "0188688ae1f6ad78bb3d3fd60c773f0c7aace96f9d" {
-		fmt.Println(1)
-	}
+	//if hex.EncodeToString(types.AddressStoreKey(addr)) == "0188688ae1f6ad78bb3d3fd60c773f0c7aace96f9d" {
+	//}
 	bz := store.Get(types.AddressStoreKey(addr))
 	//logrusplugin.Error("GetAccount", "info", fmt.Sprintf("%s:%s", hex.EncodeToString(types.AddressStoreKey(addr)), addr.String()))
 	if bz == nil {
