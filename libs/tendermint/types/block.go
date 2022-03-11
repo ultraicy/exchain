@@ -219,6 +219,10 @@ func (b *Block) Hash() tmbytes.HexBytes {
 		return nil
 	}
 	b.fillHeader()
+
+	//if HigherThanIBCHeight(b.Height) {
+	//	return b.Header.IBCHash()
+	//}
 	return b.Header.Hash()
 }
 
