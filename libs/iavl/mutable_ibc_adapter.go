@@ -7,7 +7,6 @@ import (
 )
 
 func (t *ImmutableTree) GetMembershipProof(key []byte) (*ics23.CommitmentProof, error) {
-	panic("asd")
 	exist, err := createExistenceProof(t, key)
 	if err != nil {
 		return nil, err
