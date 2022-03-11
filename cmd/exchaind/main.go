@@ -6,6 +6,8 @@ import (
 	logsdk "github.com/itsfunny/go-cell/sdk/log"
 	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
 	"github.com/okex/exchain/app/logevents"
+	"github.com/okex/exchain/libs/cosmos-sdk/store"
+	"github.com/okex/exchain/libs/cosmos-sdk/store/rootmulti"
 	"io"
 
 	"github.com/okex/exchain/app/rpc"
@@ -53,8 +55,8 @@ func initLog() {
 		"Produce[Consensus<",
 	))
 	logrusplugin.SetupDefaultWithInterest(map[string]logrusplugin.Color{
-		"connectionId": logrusplugin.TextRed,
-		"capabilityName":logrusplugin.TextRed,
+		"connectionId":   logrusplugin.TextRed,
+		"capabilityName": logrusplugin.TextRed,
 	})
 }
 func main() {
@@ -150,7 +152,30 @@ func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application
 		baseapp.SetPruning(pruningOpts),
 		baseapp.SetMinGasPrices(viper.GetString(server.FlagMinGasPrices)),
 		baseapp.SetHaltHeight(uint64(viper.GetInt(server.FlagHaltHeight))),
+		filterIBCHeightOption(db),
 	)
+}
+
+func filterIBCHeightOption(db dbm.DB) func(baseApp *baseapp.BaseApp) {
+	return func(a *baseapp.BaseApp) {
+		b := make(map[string]struct{})
+		b["ibc"] = struct{}{}
+		b["mem_capability"] = struct{}{}
+		b["capability"] = struct{}{}
+		b["transfer"] = struct{}{}
+
+		cms := store.NewCommitMultiStore(db, rootmulti.WithHeightFilterPipeline(func(h int64) func(str string) bool {
+			if tmtypes.HigherThanIBCHeight(h) {
+				// next
+				return nil
+			} // filter useless
+			return func(str string) bool {
+				_, exist := b[str]
+				return exist
+			}
+		}))
+		a.SetCMS(cms)
+	}
 }
 
 func exportAppStateAndTMValidators(

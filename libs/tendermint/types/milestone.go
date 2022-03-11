@@ -35,6 +35,7 @@ func init() {
 		milestoneVenusHeight = string2number(MILESTONE_VENUS_HEIGHT)
 		milestoreIbcHeight = string2number(MILESTONE_IBC_HEIGHT)
 		milestoreIbcHeight = math.MaxInt64
+		//milestoreIbcHeight = 100
 	})
 }
 
@@ -70,6 +71,9 @@ func HigherThanIBCHeight(h int64) bool {
 		return false
 	}
 	return h > milestoreIbcHeight
+}
+func GetIBCHeight() int64 {
+	return milestoreIbcHeight
 }
 
 // GetMilestoneVenusHeight returns milestoneVenusHeight

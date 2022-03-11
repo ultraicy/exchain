@@ -2,6 +2,7 @@ package rootmulti
 
 import (
 	"fmt"
+	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
 	sdkmaps "github.com/okex/exchain/libs/cosmos-sdk/store/internal/maps"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/mem"
 	"github.com/okex/exchain/libs/tendermint/crypto/merkle"
@@ -69,32 +70,47 @@ type Store struct {
 	interBlockCache types.MultiStorePersistentCache
 
 	logger tmlog.Logger
+
+	heightFilterPipeline func(h int64) func(str string) bool
 }
+type HeightFilterPipeline func(h int64) func(str string) bool
 
 var (
 	_ types.CommitMultiStore = (*Store)(nil)
 	_ types.Queryable        = (*Store)(nil)
+)
+var (
+	defaultNoFilterF HeightFilterPipeline = func(h int64) func(str string) bool {
+		return func(_ string) bool { return false }
+	}
 )
 
 // NewStore returns a reference to a new Store object with the provided DB. The
 // store will be created with a PruneNothing pruning strategy by default. After
 // a store is created, KVStores must be mounted and finally LoadLatestVersion or
 // LoadVersion must be called.
-func NewStore(db dbm.DB) *Store {
+func NewStore(db dbm.DB, os ...StoreOption) *Store {
 	var flatKVDB dbm.DB
 	if viper.GetBool(flatkv.FlagEnable) {
 		flatKVDB = newFlatKVDB()
 	}
-	return &Store{
-		db:           db,
-		flatKVDB:     flatKVDB,
-		pruningOpts:  types.PruneNothing,
-		storesParams: make(map[types.StoreKey]storeParams),
-		stores:       make(map[types.StoreKey]types.CommitKVStore),
-		keysByName:   make(map[string]types.StoreKey),
-		pruneHeights: make([]int64, 0),
-		versions:     make([]int64, 0),
+	ret := &Store{
+		db:                   db,
+		flatKVDB:             flatKVDB,
+		pruningOpts:          types.PruneNothing,
+		storesParams:         make(map[types.StoreKey]storeParams),
+		stores:               make(map[types.StoreKey]types.CommitKVStore),
+		keysByName:           make(map[string]types.StoreKey),
+		pruneHeights:         make([]int64, 0),
+		versions:             make([]int64, 0),
+		heightFilterPipeline: defaultNoFilterF,
 	}
+
+	for _, opt := range os {
+		opt(ret)
+	}
+
+	return ret
 }
 
 func newFlatKVDB() dbm.DB {
@@ -442,7 +458,8 @@ func (rs *Store) CommitterCommitMap(inputDeltaMap iavltree.TreeDeltaMap) (types.
 	version := previousHeight + 1
 
 	var outputDeltaMap iavltree.TreeDeltaMap
-	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.getStores(version), inputDeltaMap)
+	logrusplugin.Info("commitStores", "version", version)
+	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.getStores(version), inputDeltaMap, rs.heightFilterPipeline(version))
 
 	if !iavltree.EnableAsyncCommit {
 		// Determine if pruneHeight height needs to be added to the list of heights to
@@ -471,9 +488,11 @@ func (rs *Store) CommitterCommitMap(inputDeltaMap iavltree.TreeDeltaMap) (types.
 		}
 
 		// batch prune if the current height is a pruning interval height
+		//if version%int64(10) == 0 {
+		//	rs.pruneStores()
+		//}
 		if rs.pruningOpts.Interval > 0 && version%int64(rs.pruningOpts.Interval) == 0 {
 			rs.pruneStores()
-
 		}
 
 		rs.versions = append(rs.versions, version)
@@ -503,13 +522,14 @@ func (rs *Store) pruneStores() {
 			rs.logger.Info("pruning end")
 		}
 	}()
-	stores := rs.getStores(rs.lastCommitInfo.Version + 1)
+	stores := rs.getFilterStores(rs.lastCommitInfo.Version + 1)
+	//stores = rs.stores
 	for key, store := range stores {
 		if store.GetStoreType() == types.StoreTypeIAVL {
 			// If the store is wrapped with an inter-block cache, we must first unwrap
 			// it to get the underlying IAVL store.
 			store = rs.GetCommitKVStore(key)
-
+			store.LastCommitID()
 			if err := store.(*iavl.Store).DeleteVersions(rs.pruneHeights...); err != nil {
 				if errCause := errors.Cause(err); errCause != nil && errCause != iavltree.ErrVersionDoesNotExist {
 					panic(err)
@@ -975,9 +995,19 @@ func getLatestVersion(db dbm.DB) int64 {
 	return latest
 }
 
+var b map[string]struct{}
+
+func init() {
+	b = make(map[string]struct{})
+	b["ibc"] = struct{}{}
+	b["mem_capability"] = struct{}{}
+	b["capability"] = struct{}{}
+	b["transfer"] = struct{}{}
+}
+
 // Commits each store and returns a new commitInfo.
 func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore,
-	inputDeltaMap iavltree.TreeDeltaMap) (commitInfo, iavltree.TreeDeltaMap) {
+	inputDeltaMap iavltree.TreeDeltaMap, f func(str string) bool) (commitInfo, iavltree.TreeDeltaMap) {
 	var storeInfos []storeInfo
 	outputDeltaMap := iavltree.TreeDeltaMap{}
 
@@ -989,8 +1019,12 @@ func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore
 		}
 
 		si := storeInfo{}
+		if f(key.Name()) {
+			continue
+		}
 		si.Name = key.Name()
 		si.Core.CommitID = commitID
+		si.Core.CommitID.Version = version
 		storeInfos = append(storeInfos, si)
 		outputDeltaMap[key.Name()] = outputDelta
 	}
