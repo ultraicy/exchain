@@ -380,7 +380,7 @@ func (arz *ABCIResponses) Bytes() []byte {
 }
 
 func (arz *ABCIResponses) ResultsHash() []byte {
-	arz.info()
+	//arz.info()
 	results := types.NewResults(arz.DeliverTxs)
 	return results.Hash()
 }
