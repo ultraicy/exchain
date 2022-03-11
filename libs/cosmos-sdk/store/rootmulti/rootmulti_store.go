@@ -1,9 +1,12 @@
 package rootmulti
 
 import (
-	"encoding/hex"
 	"fmt"
-	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
+	sdkmaps "github.com/okex/exchain/libs/cosmos-sdk/store/internal/maps"
+	"github.com/okex/exchain/libs/cosmos-sdk/store/mem"
+	"github.com/okex/exchain/libs/tendermint/crypto/merkle"
+
+	//types2 "github.com/okex/exchain/libs/ibc-go/modules/core/23-commitment/types"
 	"io"
 	"log"
 	"path/filepath"
@@ -19,7 +22,7 @@ import (
 
 	iavltree "github.com/okex/exchain/libs/iavl"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
-	"github.com/okex/exchain/libs/tendermint/crypto/merkle"
+	//"github.com/okex/exchain/libs/tendermint/crypto/merkle"
 	"github.com/okex/exchain/libs/tendermint/crypto/tmhash"
 	tmlog "github.com/okex/exchain/libs/tendermint/libs/log"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
@@ -439,7 +442,7 @@ func (rs *Store) CommitterCommitMap(inputDeltaMap iavltree.TreeDeltaMap) (types.
 	version := previousHeight + 1
 
 	var outputDeltaMap iavltree.TreeDeltaMap
-	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.stores, inputDeltaMap)
+	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.getStores(), inputDeltaMap)
 
 	if !iavltree.EnableAsyncCommit {
 		// Determine if pruneHeight height needs to be added to the list of heights to
@@ -627,6 +630,7 @@ func (rs *Store) getStoreByName(name string) types.Store {
 // TODO: add proof for `multistore -> substore`.
 func (rs *Store) Query(req abci.RequestQuery) abci.ResponseQuery {
 	path := req.Path
+	str := string(req.Data)
 	storeName, subpath, err := parsePath(path)
 	if err != nil {
 		return sdkerrors.QueryResult(err)
@@ -645,6 +649,13 @@ func (rs *Store) Query(req abci.RequestQuery) abci.ResponseQuery {
 	// trim the path and make the query
 	req.Path = subpath
 	res := queryable.Query(req)
+	if strings.Contains(str, "connections") {
+		defer func() {
+			if res.Proof == nil || len(res.Proof.Ops) == 0 {
+				panic("asd")
+			}
+		}()
+	}
 
 	if !req.Prove || !RequireProof(subpath) {
 		return res
@@ -668,11 +679,15 @@ func (rs *Store) Query(req abci.RequestQuery) abci.ResponseQuery {
 		}
 	}
 
-	// Restore origin path and append proof op.
-	res.Proof.Ops = append(res.Proof.Ops, NewMultiStoreProofOp(
-		[]byte(storeName),
-		NewMultiStoreProof(commitInfo.StoreInfos),
-	).ProofOp())
+	if tmtypes.HigherThanIBCHeight(req.Height) {
+		queryIbcProof(&res, &commitInfo, storeName)
+	} else {
+		// Restore origin path and append proof op.
+		res.Proof.Ops = append(res.Proof.Ops, NewMultiStoreProofOp(
+			[]byte(storeName),
+			NewMultiStoreProof(commitInfo.StoreInfos),
+		).ProofOp())
+	}
 
 	// TODO: handle in another TM v0.26 update PR
 	// res.Proof = buildMultiStoreProof(res.Proof, storeName, commitInfo.StoreInfos)
@@ -748,6 +763,12 @@ func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID
 		}
 
 		return transient.NewStore(), nil
+	case types.StoreTypeMemory:
+		if _, ok := key.(*types.MemoryStoreKey); !ok {
+			return nil, fmt.Errorf("unexpected key type for a MemoryStoreKey; got: %s", key.String())
+		}
+
+		return mem.NewStore(), nil
 
 	default:
 		panic(fmt.Sprintf("unrecognized store type %v", params.typ))
@@ -861,23 +882,36 @@ type commitInfo struct {
 
 // Hash returns the simple merkle root hash of the stores sorted by name.
 func (ci commitInfo) Hash() []byte {
+	if tmtypes.HigherThanIBCHeight(ci.Version) {
+		return ci.ibcHash()
+	}
+	return ci.originHash()
+	//// TODO: cache to ci.hash []byte
+	//m := make(map[string][]byte, len(ci.StoreInfos))
+	//for _, storeInfo := range ci.StoreInfos {
+	//	m[storeInfo.Name] = storeInfo.Hash()
+	//}
+	//
+	//return merkle.SimpleHashFromMap(m)
+
+	// we need a special case for empty set, as SimpleProofsFromMap requires at least one entry
+	//if len(ci.StoreInfos) == 0 {
+	//	return nil
+	//}
+	//
+	//rootHash, _, _ := sdkmaps.ProofsFromMap(ci.toMap())
+	//return rootHash
+}
+func (ci commitInfo) originHash() []byte {
 	m := make(map[string][]byte, len(ci.StoreInfos))
-	hashs := make(Hashes, 0)
 	for _, storeInfo := range ci.StoreInfos {
-		//if ci.Version == 5810701 {
-		//	if storeInfo.Name == "ibc" || storeInfo.Name == "transfer" || storeInfo.Name == "upgrade" {
-		//		continue
-		//	}
-		//}
-		hashs = append(hashs, HashInfo{
-			storeName: storeInfo.Name,
-			hash:      hex.EncodeToString(storeInfo.Hash()),
-		})
 		m[storeInfo.Name] = storeInfo.Hash()
 	}
-	ret := merkle.SimpleHashFromMap(m)
-	logrusplugin.Info("commitINfo", "version", ci.Version, "hash", hex.EncodeToString(ret), "detail", hashs.String())
-	return ret
+	return merkle.SimpleHashFromMap(m)
+}
+func (ci commitInfo) ibcHash() []byte {
+	rootHash, _, _ := sdkmaps.ProofsFromMap(ci.toMap())
+	return rootHash
 }
 
 func (ci commitInfo) CommitID() types.CommitID {
@@ -946,46 +980,19 @@ func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore
 	var storeInfos []storeInfo
 	outputDeltaMap := iavltree.TreeDeltaMap{}
 
-	vs := make([]string, 0)
-	ss := make(map[string]types.CommitKVStore)
-	for key, s := range storeMap {
-		vs = append(vs, key.Name())
-		ss[key.Name()] = s
-	}
-	sort.Strings(vs)
-	for _, key := range vs {
-		if key == "acc" {
-			ss[key] = ss[key]
-		}
-		store := ss[key]
-		commitID, outputDelta := store.CommitterCommit(inputDeltaMap[key]) // CommitterCommit
+	for key, store := range storeMap {
+		commitID, outputDelta := store.CommitterCommit(inputDeltaMap[key.Name()]) // CommitterCommit
 
 		if store.GetStoreType() == types.StoreTypeTransient {
 			continue
 		}
 
 		si := storeInfo{}
-		si.Name = key
+		si.Name = key.Name()
 		si.Core.CommitID = commitID
 		storeInfos = append(storeInfos, si)
-		outputDeltaMap[key] = outputDelta
+		outputDeltaMap[key.Name()] = outputDelta
 	}
-	//for key, store := range storeMap {
-	//	if key.Name() == "acc" {
-	//		key.Name()
-	//	}
-	//	commitID, outputDelta := store.CommitterCommit(inputDeltaMap[key.Name()]) // CommitterCommit
-	//
-	//	if store.GetStoreType() == types.StoreTypeTransient {
-	//		continue
-	//	}
-	//
-	//	si := storeInfo{}
-	//	si.Name = key.Name()
-	//	si.Core.CommitID = commitID
-	//	storeInfos = append(storeInfos, si)
-	//	outputDeltaMap[key.Name()] = outputDelta
-	//}
 
 	return commitInfo{
 		Version:    version,

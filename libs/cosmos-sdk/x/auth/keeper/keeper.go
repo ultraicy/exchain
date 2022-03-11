@@ -31,10 +31,11 @@ type AccountKeeper struct {
 
 	paramSubspace subspace.Subspace
 
-	//permAddrs map[string]types.PermissionsForAddress
+	permAddrs map[string]types.PermissionsForAddress
 
 	observers []ObserverI
 }
+
 
 // NewAccountKeeper returns a new sdk.AccountKeeper that uses go-amino to
 // (binary) encode and decode concrete sdk.Accounts.
@@ -49,31 +50,24 @@ func NewAccountKeeperWithPer(
 	cdc *codec.Codec, key sdk.StoreKey, paramstore subspace.Subspace, proto func() exported.Account,
 	maccPerms map[string][]string,
 ) AccountKeeper {
-	//// set KeyTable if it has not already been set
-	//if !paramstore.HasKeyTable() {
-	//	paramstore = paramstore.WithKeyTable(types.ParamKeyTable())
-	//}
-	//
-	//permAddrs := make(map[string]types.PermissionsForAddress)
-	//if maccPerms != nil {
-	//	for name, perms := range maccPerms {
-	//		permAddrs[name] = types.NewPermissionsForAddress(name, perms)
-	//	}
-	//}
-	//
-	//return AccountKeeper{
-	//	key:           key,
-	//	proto:         proto,
-	//	cdc:           cdc,
-	//	paramSubspace: paramstore,
-	//	permAddrs:     permAddrs,
-	//}
+	// set KeyTable if it has not already been set
+	if !paramstore.HasKeyTable() {
+		paramstore = paramstore.WithKeyTable(types.ParamKeyTable())
+	}
+
+	permAddrs := make(map[string]types.PermissionsForAddress)
+	if maccPerms != nil {
+		for name, perms := range maccPerms {
+			permAddrs[name] = types.NewPermissionsForAddress(name, perms)
+		}
+	}
 
 	return AccountKeeper{
 		key:           key,
 		proto:         proto,
 		cdc:           cdc,
-		paramSubspace: paramstore.WithKeyTable(types.ParamKeyTable()),
+		paramSubspace: paramstore,
+		permAddrs:     permAddrs,
 	}
 }
 
@@ -141,14 +135,14 @@ func (ak AccountKeeper) decodeAccount(bz []byte) (acc exported.Account) {
 }
 
 // GetModuleAddress returns an address based on the module name
-//func (ak AccountKeeper) GetModuleAddress(moduleName string) sdk.AccAddress {
-//	permAddr, ok := ak.permAddrs[moduleName]
-//	if !ok {
-//		return nil
-//	}
-//
-//	return permAddr.GetAddress()
-//}
+func (ak AccountKeeper) GetModuleAddress(moduleName string) sdk.AccAddress {
+	permAddr, ok := ak.permAddrs[moduleName]
+	if !ok {
+		return nil
+	}
+
+	return permAddr.GetAddress()
+}
 
 // GetModuleAccount gets the module account from the auth account store, if the account does not
 // exist in the AccountKeeper, then it is created.
