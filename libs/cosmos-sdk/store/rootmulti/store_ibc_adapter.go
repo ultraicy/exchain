@@ -3,6 +3,7 @@ package rootmulti
 import (
 	"github.com/okex/exchain/libs/cosmos-sdk/types"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
+	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 )
 
 func queryIbcProof(res *abci.ResponseQuery, info *commitInfo, storeName string) {
@@ -10,7 +11,11 @@ func queryIbcProof(res *abci.ResponseQuery, info *commitInfo, storeName string) 
 	res.Proof.Ops = append(res.Proof.Ops, info.ProofOp(storeName))
 }
 
-func (s *Store) getStores() map[types.StoreKey]types.CommitKVStore {
+func (s *Store) getStores(h int64) map[types.StoreKey]types.CommitKVStore {
+	if tmtypes.HigherThanIBCHeight(h) {
+		return s.stores
+	}
+	// TODO FILTER:
 	m := make(map[types.StoreKey]types.CommitKVStore)
 	b := make(map[string]struct{})
 	b["ibc"] = struct{}{}
