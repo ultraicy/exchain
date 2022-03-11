@@ -800,15 +800,12 @@ func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*s
 
 	// NOTE: GasWanted is determined by the AnteHandler and GasUsed by the GasMeter.
 	for i, msg := range msgs {
-		if mode == runTxModeCheck || mode == runTxModeReCheck || mode == runTxModeWrappedCheck {
-			break
-		}
 		// skip actual execution for (Re)CheckTx mode
-		//if _, ok := msg.(sdk.MsgProtoAdapter); !ok {
-		//	if mode == runTxModeCheck || mode == runTxModeReCheck || mode == runTxModeWrappedCheck {
-		//		break
-		//	}
-		//}
+		if _, ok := msg.(sdk.MsgProtoAdapter); !ok {
+			if mode == runTxModeCheck || mode == runTxModeReCheck || mode == runTxModeWrappedCheck {
+				break
+			}
+		}
 		msgRoute := msg.Route()
 		handler := app.router.Route(ctx, msgRoute)
 		if handler == nil {
