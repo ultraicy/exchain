@@ -97,7 +97,10 @@ func ZeroFee() Coin {
 // invalid.
 func ValidateDenom(denom string) error {
 	// TODO ,height
-	if !validIBCCoinDenom(denom) {
+	if denom == DefaultBondDenom {
+		return nil
+	}
+	if !reDnm.MatchString(denom) && !rePoolTokenDnm.MatchString(denom) {
 		return fmt.Errorf("invalid denom: %s", denom)
 	}
 	return nil
