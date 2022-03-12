@@ -74,16 +74,11 @@ type Store struct {
 	commitHeightFilterPipeline func(h int64) func(str string) bool
 	pruneHeightFilterPipeline  func(h int64) func(str string) bool
 }
-type HeightFilterPipeline func(h int64) func(str string) bool
 
 var (
 	_ types.CommitMultiStore = (*Store)(nil)
 	_ types.Queryable        = (*Store)(nil)
-)
-var (
-	defaultAcceptAll HeightFilterPipeline = func(h int64) func(str string) bool {
-		return func(_ string) bool { return false }
-	}
+	_ types.CommitMultiStore = (*Store)(nil)
 )
 
 // NewStore returns a reference to a new Store object with the provided DB. The
@@ -104,8 +99,8 @@ func NewStore(db dbm.DB, os ...StoreOption) *Store {
 		keysByName:                 make(map[string]types.StoreKey),
 		pruneHeights:               make([]int64, 0),
 		versions:                   make([]int64, 0),
-		commitHeightFilterPipeline: defaultAcceptAll,
-		pruneHeightFilterPipeline:  defaultAcceptAll,
+		commitHeightFilterPipeline: types.DefaultAcceptAll,
+		pruneHeightFilterPipeline:  types.DefaultAcceptAll,
 	}
 
 	for _, opt := range os {
@@ -460,7 +455,7 @@ func (rs *Store) CommitterCommitMap(inputDeltaMap iavltree.TreeDeltaMap) (types.
 	version := previousHeight + 1
 
 	var outputDeltaMap iavltree.TreeDeltaMap
-	//logrusplugin.Info("commitStores", "version", version)
+	logrusplugin.Info("commitStores", "version", version)
 	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.getStores(version), inputDeltaMap, rs.commitHeightFilterPipeline(version))
 
 	if !iavltree.EnableAsyncCommit {

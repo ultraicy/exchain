@@ -16,6 +16,7 @@ import (
 	connectiontypes "github.com/okex/exchain/libs/ibc-go/modules/core/03-connection/types"
 	channeltypes "github.com/okex/exchain/libs/ibc-go/modules/core/04-channel/types"
 	host "github.com/okex/exchain/libs/ibc-go/modules/core/24-host"
+	"github.com/okex/exchain/libs/ibc-go/modules/core/base"
 	"github.com/okex/exchain/libs/ibc-go/modules/core/client/cli"
 	"github.com/okex/exchain/libs/ibc-go/modules/core/keeper"
 	"github.com/okex/exchain/libs/ibc-go/modules/core/simulation"
@@ -91,6 +92,7 @@ func (AppModuleBasic) RegisterInterfaces(registry codectypes.InterfaceRegistry) 
 // AppModule implements an application module for the ibc module.
 type AppModule struct {
 	AppModuleBasic
+	*base.BaseIBCUpgradeModule
 	keeper *keeper.Keeper
 
 	// create localhost by default
@@ -99,9 +101,11 @@ type AppModule struct {
 
 // NewAppModule creates a new AppModule object
 func NewAppModule(k *keeper.Keeper) AppModule {
-	return AppModule{
+	ret := AppModule{
 		keeper: k,
 	}
+	ret.BaseIBCUpgradeModule = base.NewBaseIBCUpgradeModule(ret)
+	return ret
 }
 
 func (am AppModule) Upgrade(req *abci.UpgradeReq) (*abci.ModuleUpgradeResp, error) {
@@ -211,4 +215,12 @@ func (am AppModule) RegisterStoreDecoder(sdr sdk.StoreDecoderRegistry) {
 // WeightedOperations returns the all the ibc module operations with their respective weights.
 func (am AppModule) WeightedOperations(_ module.SimulationState) []simulation2.WeightedOperation {
 	return nil
+}
+
+func (am AppModule) RegisterTask() module.HeightTask {
+	return module.NewHeightTask(0, func(ctx sdk.Context) error {
+		data := am.ExportGenesis(ctx)
+		am.InitGenesis(ctx, data)
+		return nil
+	})
 }

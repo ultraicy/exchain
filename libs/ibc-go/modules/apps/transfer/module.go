@@ -22,6 +22,7 @@ import (
 	channeltypes "github.com/okex/exchain/libs/ibc-go/modules/core/04-channel/types"
 	porttypes "github.com/okex/exchain/libs/ibc-go/modules/core/05-port/types"
 	host "github.com/okex/exchain/libs/ibc-go/modules/core/24-host"
+	"github.com/okex/exchain/libs/ibc-go/modules/core/base"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	"github.com/spf13/cobra"
 	"math"
@@ -93,15 +94,18 @@ func (AppModuleBasic) GetQueryCmd(cdc *codec.Codec) *cobra.Command {
 // AppModule represents the AppModule for this module
 type AppModule struct {
 	AppModuleBasic
+	*base.BaseIBCUpgradeModule
 	keeper keeper.Keeper
 	m      *codec.MarshalProxy
 }
 
 // NewAppModule creates a new 20-transfer module
 func NewAppModule(k keeper.Keeper, m *codec.MarshalProxy) AppModule {
-	return AppModule{
+	ret := AppModule{
 		keeper: k,
 	}
+	ret.BaseIBCUpgradeModule = base.NewBaseIBCUpgradeModule(ret.AppModuleBasic)
+	return ret
 }
 
 func (am AppModule) Upgrade(req *abci.UpgradeReq) (*abci.ModuleUpgradeResp, error) {
@@ -447,4 +451,12 @@ func (am AppModule) OnTimeoutPacket(
 	return &sdk.Result{
 		Events: ctx.EventManager().Events(),
 	}, nil
+}
+
+func (am AppModule) RegisterTask() module.HeightTask {
+	return module.NewHeightTask(0, func(ctx sdk.Context) error {
+		data := am.ExportGenesis(ctx)
+		am.InitGenesis(ctx, data)
+		return nil
+	})
 }

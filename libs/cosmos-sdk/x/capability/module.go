@@ -14,6 +14,7 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/x/capability/simulation"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/capability/types"
 	simulation2 "github.com/okex/exchain/libs/cosmos-sdk/x/simulation"
+	"github.com/okex/exchain/libs/ibc-go/modules/core/base"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	"github.com/spf13/cobra"
 	"math/rand"
@@ -32,10 +33,13 @@ var (
 // AppModuleBasic implements the AppModuleBasic interface for the capability module.
 type AppModuleBasic struct {
 	cdc codec.Marshaler
+	*base.BaseIBCUpgradeModule
 }
 
 func NewAppModuleBasic(cdc codec.Marshaler) AppModuleBasic {
-	return AppModuleBasic{cdc: cdc}
+	ret := AppModuleBasic{cdc: cdc}
+	ret.BaseIBCUpgradeModule = base.NewBaseIBCUpgradeModule(ret)
+	return ret
 }
 
 func (AppModuleBasic) RegisterCodec(cdc *codec.Codec) {}
@@ -86,15 +90,18 @@ func (AppModuleBasic) GetQueryCmd(cdc *codec.Codec) *cobra.Command { return nil 
 // AppModule implements the AppModule interface for the capability module.
 type AppModule struct {
 	AppModuleBasic
+	*base.BaseIBCUpgradeModule
 
 	keeper keeper.Keeper
 }
 
 func NewAppModule(cdc codec.Marshaler, keeper keeper.Keeper) AppModule {
-	return AppModule{
+	ret := AppModule{
 		AppModuleBasic: NewAppModuleBasic(cdc),
 		keeper:         keeper,
 	}
+	ret.BaseIBCUpgradeModule = base.NewBaseIBCUpgradeModule(ret)
+	return ret
 }
 
 func (am AppModule) Upgrade(req *abci.UpgradeReq) (*abci.ModuleUpgradeResp, error) {
@@ -172,4 +179,12 @@ func (am AppModule) RegisterStoreDecoder(sdr sdk.StoreDecoderRegistry) {
 // WeightedOperations returns the all the gov module operations with their respective weights.
 func (am AppModule) WeightedOperations(simState module.SimulationState) []simulation2.WeightedOperation {
 	return nil
+}
+
+func (am AppModule) RegisterTask() module.HeightTask {
+	return module.NewHeightTask(0, func(ctx sdk.Context) error {
+		data := am.ExportGenesis(ctx)
+		am.InitGenesis(ctx, data)
+		return nil
+	})
 }

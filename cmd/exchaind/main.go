@@ -6,8 +6,6 @@ import (
 	logsdk "github.com/itsfunny/go-cell/sdk/log"
 	logrusplugin "github.com/itsfunny/go-cell/sdk/log/logrus"
 	"github.com/okex/exchain/app/logevents"
-	"github.com/okex/exchain/libs/cosmos-sdk/store"
-	"github.com/okex/exchain/libs/cosmos-sdk/store/rootmulti"
 	"io"
 
 	"github.com/okex/exchain/app/rpc"
@@ -149,38 +147,10 @@ func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application
 		true,
 		map[int64]bool{},
 		0,
+		baseapp.SetPruning(pruningOpts),
 		baseapp.SetMinGasPrices(viper.GetString(server.FlagMinGasPrices)),
 		baseapp.SetHaltHeight(uint64(viper.GetInt(server.FlagHaltHeight))),
-		filterIBCHeightOption(db, pruningOpts),
 	)
-}
-
-func filterIBCHeightOption(db dbm.DB, ops sdk.PruningOptions) func(baseApp *baseapp.BaseApp) {
-	return func(a *baseapp.BaseApp) {
-		ibcH := tmtypes.GetIBCHeight()
-		if ibcH <= 0 {
-			return
-		}
-		b := make(map[string]struct{})
-		b["ibc"] = struct{}{}
-		b["mem_capability"] = struct{}{}
-		b["capability"] = struct{}{}
-		b["transfer"] = struct{}{}
-		f := func(h int64) func(str string) bool {
-			if h > ibcH {
-				// next
-				return nil
-			}
-			// filter block module
-			return func(str string) bool {
-				_, exist := b[str]
-				return exist
-			}
-		}
-		cms := store.NewCommitMultiStore(db, rootmulti.WithHeightFilterPipeline(f), rootmulti.WithPruneHeightBlockFilter(f))
-		cms.SetPruning(ops)
-		a.SetCMS(cms)
-	}
 }
 
 func exportAppStateAndTMValidators(

@@ -30,6 +30,9 @@ package module
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
+	"sort"
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
@@ -339,6 +342,61 @@ func (m *Manager) RegisterServices(cfg Configurator) {
 			ada.RegisterServices(cfg)
 		}
 	}
+}
+func (m *Manager) CollectUpgradeModules() (map[int64]*HeightTasks, types.HeightFilterPipeline) {
+	hm := make(map[int64]*HeightTasks)
+	hStoreInfoModule := make(map[int64]map[string]struct{})
+	for _, module := range m.Modules {
+		if ada, ok := module.(UpgradeModule); ok {
+			h := ada.UpgradeHeight()
+			if h == 0 {
+				continue
+			}
+			t := ada.RegisterTask()
+			if t == nil {
+				continue
+			}
+			if err := t.ValidateBasic(); nil != err {
+				panic(fmt.Sprintf("task:%s,err:%s", ada.ModuleName(), err.Error()))
+			}
+			storeInfoModule := hStoreInfoModule[h]
+			if storeInfoModule == nil {
+				storeInfoModule = make(map[string]struct{})
+				hStoreInfoModule[h] = storeInfoModule
+			}
+			storeInfoModule[ada.ModuleName()] = struct{}{}
+			taskList := hm[h]
+			if taskList == nil {
+				v := make(HeightTasks, 0)
+				taskList = &v
+				hm[h] = taskList
+			}
+			*taskList = append(*taskList, t)
+		}
+	}
+	for _, v := range hm {
+		sort.Sort(*v)
+	}
+	var pip types.HeightFilterPipeline
+	for height, mm := range hStoreInfoModule {
+		f := func(h int64) func(str string) bool {
+			if h > height {
+				// next
+				return nil
+			}
+			// filter block module
+			return func(str string) bool {
+				_, exist := mm[str]
+				return exist
+			}
+		}
+		if pip == nil {
+			pip = f
+		} else {
+			pip = types.LinkPipeline(f, pip)
+		}
+	}
+	return hm, pip
 }
 
 type MigrationHandler func(sdk.Context) error

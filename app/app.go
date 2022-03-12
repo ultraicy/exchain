@@ -202,6 +202,7 @@ type OKExChainApp struct {
 	CapabilityKeeper     *capabilitykeeper.Keeper
 	IBCKeeper            *ibc.Keeper // IBC Keeper must be a pointer in the app, so we can SetRouter on it correctly
 	marshal              *codec.CodecProxy
+	heightTasks          map[int64]*module.HeightTasks
 }
 
 // NewOKExChainApp returns a reference to a new initialized OKExChain application.
@@ -284,6 +285,7 @@ func NewOKExChainApp(
 		keys:           keys,
 		tkeys:          tkeys,
 		subspaces:      make(map[string]params.Subspace),
+		heightTasks:    make(map[int64]*module.HeightTasks),
 	}
 	bApp.Cdc = cdc
 	bApp.SetInterceptors(makeInterceptors(cdc))
@@ -503,6 +505,7 @@ func NewOKExChainApp(
 	app.mm.RegisterRoutes(app.Router(), app.QueryRouter())
 	app.configurator = module.NewConfigurator(app.Codec(), app.MsgServiceRouter(), app.GRPCQueryRouter())
 	app.mm.RegisterServices(app.configurator)
+	app.setupUpgradeModules()
 
 	// create the simulation manager and define the order of the modules for deterministic simulations
 	//
@@ -643,6 +646,12 @@ func (app *OKExChainApp) Marshal() *codec.CodecProxy {
 // NOTE: This is solely to be used for testing purposes.
 func (app *OKExChainApp) GetSubspace(moduleName string) params.Subspace {
 	return app.subspaces[moduleName]
+}
+func (app *OKExChainApp) setupUpgradeModules() {
+	heightTasks, pip := app.mm.CollectUpgradeModules()
+	app.heightTasks = heightTasks
+	app.GetCMS().SetPruneHeightFilterPipeline(pip)
+	app.GetCMS().SetCommitHeightFilterPipeline(pip)
 }
 
 var protoCodec = encoding.GetCodec(proto.Name)
