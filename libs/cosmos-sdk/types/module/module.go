@@ -353,7 +353,8 @@ func (m *Manager) CollectUpgradeModules() (map[int64]*HeightTasks, types.HeightF
 	for _, module := range m.Modules {
 		if ada, ok := module.(UpgradeModule); ok {
 			h := ada.UpgradeHeight()
-			if h == 0 {
+			upgradeH := h - 1
+			if upgradeH <= 0 {
 				continue
 			}
 			t := ada.RegisterTask()
@@ -369,7 +370,7 @@ func (m *Manager) CollectUpgradeModules() (map[int64]*HeightTasks, types.HeightF
 				hStoreInfoModule[h] = storeInfoModule
 			}
 			storeInfoModule[ada.ModuleName()] = struct{}{}
-			taskList := hm[h]
+			taskList := hm[upgradeH]
 			if taskList == nil {
 				v := make(HeightTasks, 0)
 				taskList = &v

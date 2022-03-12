@@ -26,5 +26,5 @@ func (b *BaseIBCUpgradeModule) RegisterTask() module.HeightTask {
 }
 
 func (b *BaseIBCUpgradeModule) UpgradeHeight() int64 {
-	return types.GetIBCHeight() - 1
+	return types.GetIBCHeight()
 }
