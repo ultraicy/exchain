@@ -24,6 +24,7 @@ var (
 	_ module.AppModuleAdapter    = AppModule{}
 	_ module.AppModuleBasic      = AppModuleBasic{}
 	_ module.AppModuleSimulation = AppModule{}
+	_ module.UpgradeModule       = AppModule{}
 )
 
 // ----------------------------------------------------------------------------

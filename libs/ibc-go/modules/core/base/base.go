@@ -28,3 +28,7 @@ func (b *BaseIBCUpgradeModule) RegisterTask() module.HeightTask {
 func (b *BaseIBCUpgradeModule) UpgradeHeight() int64 {
 	return types.GetIBCHeight()
 }
+
+func (b *BaseIBCUpgradeModule) BlockStoreModules() []string {
+	return []string{"ibc", "mem_capability", "capability", "transfer"}
+}

@@ -30,7 +30,6 @@ package module
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
 	"sort"
 
@@ -362,14 +361,17 @@ func (m *Manager) CollectUpgradeModules() (map[int64]*HeightTasks, types.HeightF
 				continue
 			}
 			if err := t.ValidateBasic(); nil != err {
-				panic(fmt.Sprintf("task:%s,err:%s", ada.ModuleName(), err.Error()))
+				panic(err)
 			}
 			storeInfoModule := hStoreInfoModule[h]
 			if storeInfoModule == nil {
 				storeInfoModule = make(map[string]struct{})
 				hStoreInfoModule[h] = storeInfoModule
 			}
-			storeInfoModule[ada.ModuleName()] = struct{}{}
+			names := ada.BlockStoreModules()
+			for _, n := range names {
+				storeInfoModule[n] = struct{}{}
+			}
 			taskList := hm[upgradeH]
 			if taskList == nil {
 				v := make(HeightTasks, 0)

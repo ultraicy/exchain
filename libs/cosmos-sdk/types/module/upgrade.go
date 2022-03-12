@@ -6,9 +6,9 @@ import (
 )
 
 type UpgradeModule interface {
-	ModuleName() string
 	RegisterTask() HeightTask
 	UpgradeHeight() int64
+	BlockStoreModules() []string
 }
 
 type HeightTasks []HeightTask
