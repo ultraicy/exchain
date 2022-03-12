@@ -132,6 +132,9 @@ func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 // InitGenesis performs the capability module's genesis initialization It returns
 // no validator updates.
 func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
+	return am.initGenesis(ctx, data)
+}
+func (am AppModule) initGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
 	var genState types.GenesisState
 	// Initialize global index to index in genesis state
 	ModuleCdc.MustUnmarshalJSON(data, &genState)
@@ -143,6 +146,9 @@ func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.Va
 
 // ExportGenesis returns the capability module's exported genesis state as raw JSON bytes.
 func (am AppModule) ExportGenesis(ctx sdk.Context) json.RawMessage {
+	return nil
+}
+func (am AppModule) exportGenesis(ctx sdk.Context) json.RawMessage {
 	genState := ExportGenesis(ctx, am.keeper)
 	return ModuleCdc.MustMarshalJSON(genState)
 }
@@ -183,8 +189,8 @@ func (am AppModule) WeightedOperations(simState module.SimulationState) []simula
 
 func (am AppModule) RegisterTask() module.HeightTask {
 	return module.NewHeightTask(0, func(ctx sdk.Context) error {
-		data := am.ExportGenesis(ctx)
-		am.InitGenesis(ctx, data)
+		data := am.exportGenesis(ctx)
+		am.initGenesis(ctx, data)
 		return nil
 	})
 }

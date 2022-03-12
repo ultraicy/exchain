@@ -22,7 +22,7 @@ func (b *BaseIBCUpgradeModule) ModuleName() string {
 }
 
 func (b *BaseIBCUpgradeModule) RegisterTask() module.HeightTask {
-	return nil
+	panic("override")
 }
 
 func (b *BaseIBCUpgradeModule) UpgradeHeight() int64 {

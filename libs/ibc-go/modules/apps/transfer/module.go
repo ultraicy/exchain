@@ -151,6 +151,10 @@ func (am AppModule) RegisterServices(cfg module.Configurator) {
 // InitGenesis performs genesis initialization for the ibc-transfer module. It returns
 // no validator updates.
 func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
+	return am.initGenesis(ctx, data)
+}
+
+func (am AppModule) initGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
 	var genesisState types.GenesisState
 	ModuleCdc.MustUnmarshalJSON(data, &genesisState)
 	am.keeper.InitGenesis(ctx, genesisState)
@@ -160,6 +164,9 @@ func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.Va
 // ExportGenesis returns the exported genesis state as raw bytes for the ibc-transfer
 // module.
 func (am AppModule) ExportGenesis(ctx sdk.Context) json.RawMessage {
+	return nil
+}
+func (am AppModule) exportGenesis(ctx sdk.Context) json.RawMessage {
 	gs := am.keeper.ExportGenesis(ctx)
 	return ModuleCdc.MustMarshalJSON(gs)
 }
@@ -455,8 +462,8 @@ func (am AppModule) OnTimeoutPacket(
 
 func (am AppModule) RegisterTask() module.HeightTask {
 	return module.NewHeightTask(0, func(ctx sdk.Context) error {
-		data := am.ExportGenesis(ctx)
-		am.InitGenesis(ctx, data)
+		data := am.exportGenesis(ctx)
+		am.initGenesis(ctx, data)
 		return nil
 	})
 }

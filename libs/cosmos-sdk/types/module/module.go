@@ -288,6 +288,10 @@ func (m *Manager) InitGenesis(ctx sdk.Context, genesisData map[string]json.RawMe
 func (m *Manager) ExportGenesis(ctx sdk.Context) map[string]json.RawMessage {
 	genesisData := make(map[string]json.RawMessage)
 	for _, moduleName := range m.OrderExportGenesis {
+		data := m.Modules[moduleName].ExportGenesis(ctx)
+		if nil == data {
+			continue
+		}
 		genesisData[moduleName] = m.Modules[moduleName].ExportGenesis(ctx)
 	}
 	return genesisData

@@ -159,6 +159,10 @@ func (am AppModule) RegisterServices(cfg module.Configurator) {
 // no validator updates.
 //func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONMarshaler, bz json.RawMessage) []abci.ValidatorUpdate {
 func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
+	return am.initGenesis(ctx, data)
+}
+
+func (am AppModule) initGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
 	var gs types.GenesisState
 	err := ModuleCdc.UnmarshalJSON(data, &gs)
 	if err != nil {
@@ -171,6 +175,10 @@ func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.Va
 // ExportGenesis returns the exported genesis state as raw bytes for the ibc
 // module.
 func (am AppModule) ExportGenesis(ctx sdk.Context) json.RawMessage {
+	return am.exportGenesis(ctx)
+}
+
+func (am AppModule) exportGenesis(ctx sdk.Context) json.RawMessage {
 	return ModuleCdc.MustMarshalJSON(ExportGenesis(ctx, *am.keeper))
 }
 
@@ -219,8 +227,8 @@ func (am AppModule) WeightedOperations(_ module.SimulationState) []simulation2.W
 
 func (am AppModule) RegisterTask() module.HeightTask {
 	return module.NewHeightTask(0, func(ctx sdk.Context) error {
-		data := am.ExportGenesis(ctx)
-		am.InitGenesis(ctx, data)
+		data := am.exportGenesis(ctx)
+		am.initGenesis(ctx, data)
 		return nil
 	})
 }
