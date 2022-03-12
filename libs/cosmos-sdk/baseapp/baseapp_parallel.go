@@ -138,6 +138,9 @@ func (app *BaseApp) calGroup(txsExtraData []*extraDataForTx) (map[int][]int, map
 }
 
 func (app *BaseApp) ParallelTxs(txs [][]byte) []*abci.ResponseDeliverTx {
+	if len(txs) == 0 {
+		return make([]*abci.ResponseDeliverTx, 0)
+	}
 	//ts := time.Now()
 	//defer func() {
 	//	sdk.AddParaAllTIme(time.Now().Sub(ts))
@@ -326,9 +329,12 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 	pm.workgroup.resultCb = asyncCb
 	pm.workgroup.taskRun = app.asyncDeliverTx
 
-	if groupList[0][0] != 0 {
+	if len(groupList) == 0 {
+		pm.workgroup.AddTask(txs[0], 0)
+	} else if groupList[0][0] != 0 {
 		pm.workgroup.AddTask(txs[0], 0)
 	}
+
 	for _, group := range groupList {
 		txIndex := group[0]
 		pm.workgroup.AddTask(txs[txIndex], txIndex)
