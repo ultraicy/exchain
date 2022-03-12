@@ -34,8 +34,10 @@ func init() {
 		milestoneMercuryHeight = string2number(MILESTONE_MERCURY_HEIGHT)
 		milestoneVenusHeight = string2number(MILESTONE_VENUS_HEIGHT)
 		milestoreIbcHeight = string2number(MILESTONE_IBC_HEIGHT)
+		if milestoreIbcHeight <= 1 {
+			panic("ibc height cant smaller than 1 ,it must gt or equal to 2")
+		}
 		milestoreIbcHeight = math.MaxInt64
-		//milestoreIbcHeight = 100
 	})
 }
 

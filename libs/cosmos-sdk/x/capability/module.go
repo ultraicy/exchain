@@ -33,11 +33,11 @@ var (
 
 // AppModuleBasic implements the AppModuleBasic interface for the capability module.
 type AppModuleBasic struct {
-	cdc codec.Marshaler
+	cdc *codec.CodecProxy
 	*base.BaseIBCUpgradeModule
 }
 
-func NewAppModuleBasic(cdc codec.Marshaler) AppModuleBasic {
+func NewAppModuleBasic(cdc *codec.CodecProxy) AppModuleBasic {
 	ret := AppModuleBasic{cdc: cdc}
 	ret.BaseIBCUpgradeModule = base.NewBaseIBCUpgradeModule(ret)
 	return ret
@@ -96,7 +96,15 @@ type AppModule struct {
 	keeper keeper.Keeper
 }
 
-func NewAppModule(cdc codec.Marshaler, keeper keeper.Keeper) AppModule {
+func (am AppModule) NewHandler() sdk.Handler {
+	return nil
+}
+
+func (am AppModule) NewQuerierHandler() sdk.Querier {
+	return nil
+}
+
+func NewAppModule(cdc *codec.CodecProxy, keeper keeper.Keeper) AppModule {
 	ret := AppModule{
 		AppModuleBasic: NewAppModuleBasic(cdc),
 		keeper:         keeper,
@@ -115,7 +123,7 @@ func (am AppModule) Name() string {
 }
 
 // Route returns the capability module's message routing key.
-func (AppModule) Route() sdk.Route { return sdk.Route{} }
+func (AppModule) Route() string { return types.ModuleName }
 
 // QuerierRoute returns the capability module's query routing key.
 func (AppModule) QuerierRoute() string { return "" }
@@ -133,7 +141,8 @@ func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 // InitGenesis performs the capability module's genesis initialization It returns
 // no validator updates.
 func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
-	return am.initGenesis(ctx, data)
+	//return am.initGenesis(ctx, data)
+	return nil
 }
 func (am AppModule) initGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
 	var genState types.GenesisState
@@ -190,7 +199,7 @@ func (am AppModule) WeightedOperations(simState module.SimulationState) []simula
 
 func (am AppModule) RegisterTask() module.HeightTask {
 	return module.NewHeightTask(0, func(ctx sdk.Context) error {
-		data := am.exportGenesis(ctx)
+		data := ModuleCdc.MustMarshalJSON(lazeGenesis())
 		am.initGenesis(ctx, data)
 		return nil
 	})

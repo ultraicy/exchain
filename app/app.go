@@ -462,6 +462,7 @@ func NewOKExChainApp(
 		params.NewAppModule(app.ParamsKeeper),
 		// ibc
 		ibc.NewAppModule(app.IBCKeeper),
+		capabilityModule.NewAppModule(cdcproxy, *app.CapabilityKeeper),
 		transferModule,
 	)
 
@@ -494,10 +495,12 @@ func NewOKExChainApp(
 	// NOTE: The genutils module must occur after staking so that pools are
 	// properly initialized with tokens from genesis accounts.
 	app.mm.SetOrderInitGenesis(
+		//capabilitytypes.ModuleName,
 		auth.ModuleName, distr.ModuleName, staking.ModuleName, bank.ModuleName,
 		slashing.ModuleName, gov.ModuleName, mint.ModuleName, supply.ModuleName,
-		token.ModuleName, dex.ModuleName, order.ModuleName, ammswap.ModuleName, farm.ModuleName, ibctransfertypes.ModuleName,
-		host.ModuleName,
+		token.ModuleName, dex.ModuleName, order.ModuleName, ammswap.ModuleName, farm.ModuleName,
+		//host.ModuleName,
+		//ibctransfertypes.ModuleName,
 		evm.ModuleName, crisis.ModuleName, genutil.ModuleName, params.ModuleName, evidence.ModuleName,
 	)
 

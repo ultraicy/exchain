@@ -376,7 +376,7 @@ func (m *Manager) CollectUpgradeModules() (map[int64]*HeightTasks, types.HeightF
 			if taskList == nil {
 				v := make(HeightTasks, 0)
 				taskList = &v
-				hm[h] = taskList
+				hm[upgradeH] = taskList
 			}
 			*taskList = append(*taskList, t)
 		}

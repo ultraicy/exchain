@@ -41,6 +41,7 @@ func (am AppModule) Upgrade(req *abci.UpgradeReq) (*abci.ModuleUpgradeResp, erro
 }
 
 func (am AppModule) RegisterTask() module.HeightTask {
+	return nil
 	return module.NewHeightTask(0, func(ctx sdk.Context) error {
 		data := am.exportGenesis(ctx)
 		am.initGenesis(ctx, data)

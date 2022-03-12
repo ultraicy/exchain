@@ -151,7 +151,8 @@ func (am AppModule) RegisterServices(cfg module.Configurator) {
 // InitGenesis performs genesis initialization for the ibc-transfer module. It returns
 // no validator updates.
 func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
-	return am.initGenesis(ctx, data)
+	//return am.initGenesis(ctx, data)
+	return nil
 }
 
 func (am AppModule) initGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
@@ -164,11 +165,23 @@ func (am AppModule) initGenesis(ctx sdk.Context, data json.RawMessage) []abci.Va
 // ExportGenesis returns the exported genesis state as raw bytes for the ibc-transfer
 // module.
 func (am AppModule) ExportGenesis(ctx sdk.Context) json.RawMessage {
+	//return am.exportGenesis(ctx)
 	return nil
 }
 func (am AppModule) exportGenesis(ctx sdk.Context) json.RawMessage {
 	gs := am.keeper.ExportGenesis(ctx)
 	return ModuleCdc.MustMarshalJSON(gs)
+}
+func lazeGenesis() json.RawMessage {
+	ret := &types.GenesisState{
+		PortId:      "transfer",
+		DenomTraces: nil,
+		Params: types.Params{
+			SendEnabled:    true,
+			ReceiveEnabled: true,
+		},
+	}
+	return ModuleCdc.MustMarshalJSON(ret)
 }
 
 // BeginBlock implements the AppModule interface
@@ -461,8 +474,8 @@ func (am AppModule) OnTimeoutPacket(
 }
 
 func (am AppModule) RegisterTask() module.HeightTask {
-	return module.NewHeightTask(0, func(ctx sdk.Context) error {
-		data := am.exportGenesis(ctx)
+	return module.NewHeightTask(2, func(ctx sdk.Context) error {
+		data := lazeGenesis()
 		am.initGenesis(ctx, data)
 		return nil
 	})

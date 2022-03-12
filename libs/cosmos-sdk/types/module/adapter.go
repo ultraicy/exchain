@@ -24,6 +24,7 @@ type AppModuleGenesisAdapter interface {
 
 // AppModule is the standard form for an application module
 type AppModuleAdapter interface {
+	AppModule
 	AppModuleGenesisAdapter
 	// registers
 	RegisterInvariants(sdk.InvariantRegistry)

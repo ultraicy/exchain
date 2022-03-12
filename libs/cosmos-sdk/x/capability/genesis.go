@@ -43,3 +43,10 @@ func ExportGenesis(ctx sdk.Context, k keeper.Keeper) *types.GenesisState {
 		Owners: owners,
 	}
 }
+
+func lazeGenesis() *types.GenesisState {
+	return &types.GenesisState{
+		Index:  1,
+		Owners: nil,
+	}
+}

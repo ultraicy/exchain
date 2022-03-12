@@ -159,7 +159,8 @@ func (am AppModule) RegisterServices(cfg module.Configurator) {
 // no validator updates.
 //func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONMarshaler, bz json.RawMessage) []abci.ValidatorUpdate {
 func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
-	return am.initGenesis(ctx, data)
+	//return am.initGenesis(ctx, data)
+	return nil
 }
 
 func (am AppModule) initGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
@@ -175,11 +176,19 @@ func (am AppModule) initGenesis(ctx sdk.Context, data json.RawMessage) []abci.Va
 // ExportGenesis returns the exported genesis state as raw bytes for the ibc
 // module.
 func (am AppModule) ExportGenesis(ctx sdk.Context) json.RawMessage {
-	return am.exportGenesis(ctx)
+	//return am.exportGenesis(ctx)
+	return nil
 }
 
 func (am AppModule) exportGenesis(ctx sdk.Context) json.RawMessage {
 	return ModuleCdc.MustMarshalJSON(ExportGenesis(ctx, *am.keeper))
+}
+
+func lazyGenesis() json.RawMessage {
+	jsonStr := "{\n      \"channel_genesis\": {\n        \"ack_sequences\": [],\n        \"acknowledgements\": [],\n        \"channels\": [],\n        \"commitments\": [],\n        \"receipts\": [],\n        \"recv_sequences\": [],\n        \"send_sequences\": []\n      },\n      \"client_genesis\": {\n        \"clients\": [],\n        \"clients_consensus\": [],\n        \"clients_metadata\": null,\n        \"params\": {\n          \"allowed_clients\": [\n            \"06-solomachine\",\n            \"07-tendermint\"\n          ]\n        }\n      },\n      \"connection_genesis\": {\n        \"client_connection_paths\": [],\n        \"connections\": []\n      }\n    }"
+	var ret types.GenesisState
+	ModuleCdc.MustUnmarshalJSON([]byte(jsonStr), &ret)
+	return ModuleCdc.MustMarshalJSON(&ret)
 }
 
 // BeginBlock returns the begin blocker for the ibc module.
@@ -226,8 +235,8 @@ func (am AppModule) WeightedOperations(_ module.SimulationState) []simulation2.W
 }
 
 func (am AppModule) RegisterTask() module.HeightTask {
-	return module.NewHeightTask(0, func(ctx sdk.Context) error {
-		data := am.exportGenesis(ctx)
+	return module.NewHeightTask(4, func(ctx sdk.Context) error {
+		data := lazyGenesis()
 		am.initGenesis(ctx, data)
 		return nil
 	})
