@@ -71,7 +71,8 @@ type Store struct {
 
 	logger tmlog.Logger
 
-	heightFilterPipeline func(h int64) func(str string) bool
+	commitHeightFilterPipeline func(h int64) func(str string) bool
+	pruneHeightFilterPipeline  func(h int64) func(str string) bool
 }
 type HeightFilterPipeline func(h int64) func(str string) bool
 
@@ -95,15 +96,16 @@ func NewStore(db dbm.DB, os ...StoreOption) *Store {
 		flatKVDB = newFlatKVDB()
 	}
 	ret := &Store{
-		db:                   db,
-		flatKVDB:             flatKVDB,
-		pruningOpts:          types.PruneNothing,
-		storesParams:         make(map[types.StoreKey]storeParams),
-		stores:               make(map[types.StoreKey]types.CommitKVStore),
-		keysByName:           make(map[string]types.StoreKey),
-		pruneHeights:         make([]int64, 0),
-		versions:             make([]int64, 0),
-		heightFilterPipeline: defaultNoFilterF,
+		db:                         db,
+		flatKVDB:                   flatKVDB,
+		pruningOpts:                types.PruneNothing,
+		storesParams:               make(map[types.StoreKey]storeParams),
+		stores:                     make(map[types.StoreKey]types.CommitKVStore),
+		keysByName:                 make(map[string]types.StoreKey),
+		pruneHeights:               make([]int64, 0),
+		versions:                   make([]int64, 0),
+		commitHeightFilterPipeline: defaultNoFilterF,
+		pruneHeightFilterPipeline:  defaultNoFilterF,
 	}
 
 	for _, opt := range os {
@@ -458,8 +460,8 @@ func (rs *Store) CommitterCommitMap(inputDeltaMap iavltree.TreeDeltaMap) (types.
 	version := previousHeight + 1
 
 	var outputDeltaMap iavltree.TreeDeltaMap
-	logrusplugin.Info("commitStores", "version", version)
-	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.getStores(version), inputDeltaMap, rs.heightFilterPipeline(version))
+	//logrusplugin.Info("commitStores", "version", version)
+	rs.lastCommitInfo, outputDeltaMap = commitStores(version, rs.getStores(version), inputDeltaMap, rs.commitHeightFilterPipeline(version))
 
 	if !iavltree.EnableAsyncCommit {
 		// Determine if pruneHeight height needs to be added to the list of heights to
@@ -488,12 +490,12 @@ func (rs *Store) CommitterCommitMap(inputDeltaMap iavltree.TreeDeltaMap) (types.
 		}
 
 		// batch prune if the current height is a pruning interval height
-		//if version%int64(10) == 0 {
-		//	rs.pruneStores()
-		//}
-		if rs.pruningOpts.Interval > 0 && version%int64(rs.pruningOpts.Interval) == 0 {
+		if version%int64(10) == 0 {
 			rs.pruneStores()
 		}
+		//if rs.pruningOpts.Interval > 0 && version%int64(rs.pruningOpts.Interval) == 0 {
+		//	rs.pruneStores()
+		//}
 
 		rs.versions = append(rs.versions, version)
 	}
@@ -524,6 +526,7 @@ func (rs *Store) pruneStores() {
 	}()
 	stores := rs.getFilterStores(rs.lastCommitInfo.Version + 1)
 	//stores = rs.stores
+	logrusplugin.Info("pruning start", "pruning-count", pruneCnt, "curr-height", rs.lastCommitInfo.Version+1)
 	for key, store := range stores {
 		if store.GetStoreType() == types.StoreTypeIAVL {
 			// If the store is wrapped with an inter-block cache, we must first unwrap
@@ -993,16 +996,6 @@ func getLatestVersion(db dbm.DB) int64 {
 	}
 
 	return latest
-}
-
-var b map[string]struct{}
-
-func init() {
-	b = make(map[string]struct{})
-	b["ibc"] = struct{}{}
-	b["mem_capability"] = struct{}{}
-	b["capability"] = struct{}{}
-	b["transfer"] = struct{}{}
 }
 
 // Commits each store and returns a new commitInfo.

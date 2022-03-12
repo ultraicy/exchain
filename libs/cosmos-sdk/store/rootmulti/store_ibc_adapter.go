@@ -15,10 +15,14 @@ type StoreOption func(s *Store)
 
 func WithHeightFilterPipeline(f HeightFilterPipeline) StoreOption {
 	return func(s *Store) {
-		s.heightFilterPipeline = merge(f, s.heightFilterPipeline)
+		s.commitHeightFilterPipeline = merge(f, s.commitHeightFilterPipeline)
 	}
 }
-
+func WithPruneHeightBlockFilter(f HeightFilterPipeline) StoreOption {
+	return func(s *Store) {
+		s.pruneHeightFilterPipeline = merge(f, s.pruneHeightFilterPipeline)
+	}
+}
 func merge(f, s HeightFilterPipeline) HeightFilterPipeline {
 	return func(h int64) func(str string) bool {
 		filter := f(h)
@@ -37,15 +41,11 @@ func (s *Store) getFilterStores(h int64) map[types.StoreKey]types.CommitKVStore 
 	if tmtypes.HigherThanIBCHeight(h) {
 		return s.stores
 	}
+	f := s.pruneHeightFilterPipeline(h)
 	// TODO FILTER:
 	m := make(map[types.StoreKey]types.CommitKVStore)
-	b := make(map[string]struct{})
-	b["ibc"] = struct{}{}
-	b["mem_capability"] = struct{}{}
-	b["capability"] = struct{}{}
-	b["transfer"] = struct{}{}
 	for k, v := range s.stores {
-		if _, exist := b[k.Name()]; exist {
+		if f(k.Name()) {
 			continue
 		}
 		m[k] = v
