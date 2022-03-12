@@ -7,6 +7,7 @@ import (
 	"github.com/okex/exchain/libs/tendermint/crypto"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
 	"github.com/spf13/viper"
+	"sync"
 	"time"
 )
 
@@ -55,6 +56,8 @@ type codeWithCache struct {
 }
 
 type Cache struct {
+	mu sync.Mutex
+
 	useCache  bool
 	parent    *Cache
 	gasConfig types.GasConfig
@@ -85,6 +88,8 @@ func NewChainCache() *Cache {
 
 func NewCache(parent *Cache, useCache bool) *Cache {
 	return &Cache{
+		mu: sync.Mutex{},
+
 		useCache: useCache,
 		parent:   parent,
 
@@ -108,11 +113,14 @@ func (c *Cache) UpdateAccount(addr AccAddress, acc account, lenBytes int, isDirt
 		return
 	}
 	ethAddr := ethcmn.BytesToAddress(addr.Bytes())
+
+	c.mu.Lock()
 	c.accMap[ethAddr] = &accountWithCache{
 		acc:     acc,
 		isDirty: isDirty,
 		gas:     types.Gas(lenBytes)*c.gasConfig.ReadCostPerByte + c.gasConfig.ReadCostFlat,
 	}
+	c.mu.Unlock()
 }
 
 func (c *Cache) UpdateStorage(addr ethcmn.Address, key ethcmn.Hash, value []byte, isDirty bool) {
@@ -120,6 +128,7 @@ func (c *Cache) UpdateStorage(addr ethcmn.Address, key ethcmn.Hash, value []byte
 		return
 	}
 
+	c.mu.Lock()
 	if _, ok := c.storageMap[addr]; !ok {
 		c.storageMap[addr] = make(map[ethcmn.Hash]*storageWithCache, 0)
 	}
@@ -127,6 +136,7 @@ func (c *Cache) UpdateStorage(addr ethcmn.Address, key ethcmn.Hash, value []byte
 		value: value,
 		dirty: isDirty,
 	}
+	c.mu.Unlock()
 }
 
 func (c *Cache) UpdateCode(key []byte, value []byte, isdirty bool) {
@@ -134,10 +144,12 @@ func (c *Cache) UpdateCode(key []byte, value []byte, isdirty bool) {
 		return
 	}
 	hash := ethcmn.BytesToHash(key)
+	c.mu.Lock()
 	c.codeMap[hash] = &codeWithCache{
 		code:    value,
 		isDirty: isdirty,
 	}
+	c.mu.Unlock()
 }
 
 func (c *Cache) GetAccount(addr ethcmn.Address) (account, uint64, bool) {
@@ -145,6 +157,8 @@ func (c *Cache) GetAccount(addr ethcmn.Address) (account, uint64, bool) {
 		return nil, 0, false
 	}
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if data, ok := c.accMap[addr]; ok {
 		return data.acc, data.gas, ok
 	}
@@ -160,6 +174,8 @@ func (c *Cache) GetStorage(addr ethcmn.Address, key ethcmn.Hash) ([]byte, bool) 
 	if c.skip() {
 		return nil, false
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if _, hasAddr := c.storageMap[addr]; hasAddr {
 		data, hasKey := c.storageMap[addr][key]
 		if hasKey {
@@ -179,6 +195,8 @@ func (c *Cache) GetCode(key []byte) ([]byte, bool) {
 	}
 
 	hash := ethcmn.BytesToHash(key)
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if data, ok := c.codeMap[hash]; ok {
 		return data.code, ok
 	}
@@ -194,6 +212,8 @@ func (c *Cache) Write(updateDirty bool) {
 		return
 	}
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.parent == nil {
 		return
 	}

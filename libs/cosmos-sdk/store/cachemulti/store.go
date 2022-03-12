@@ -136,6 +136,18 @@ func (cms Store) Write() {
 	}
 }
 
+func (cms Store) Display() (map[types.StoreKey]int, map[types.StoreKey]int) {
+	r := make(map[types.StoreKey]int, 0)
+	w := make(map[types.StoreKey]int, 0)
+	for key, store := range cms.stores {
+		rr, ww := store.Display()
+		r[key] = rr[types.NullStoreKey]
+		w[key] = ww[types.NullStoreKey]
+	}
+
+	return r, w
+}
+
 func (cms Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, storeKey types.StoreKey) bool, sKey types.StoreKey) bool {
 	for key, store := range cms.stores {
 		if !store.IteratorCache(cb, key) {

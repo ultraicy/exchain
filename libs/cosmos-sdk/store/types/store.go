@@ -228,6 +228,7 @@ type KVStore interface {
 }
 
 type CacheManager interface {
+	Display() (map[StoreKey]int, map[StoreKey]int)
 	IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, storeKey StoreKey) bool, sKey StoreKey) bool
 	GetRWSet(rSet map[string][]byte, wSet map[string][]byte)
 }
@@ -387,3 +388,7 @@ type MultiStorePersistentCache interface {
 	// Reset the entire set of internal caches.
 	Reset()
 }
+
+var (
+	NullStoreKey = NewKVStoreKey("")
+)
