@@ -81,7 +81,7 @@ var (
 	_ types.Queryable        = (*Store)(nil)
 )
 var (
-	defaultNoFilterF HeightFilterPipeline = func(h int64) func(str string) bool {
+	defaultAcceptAll HeightFilterPipeline = func(h int64) func(str string) bool {
 		return func(_ string) bool { return false }
 	}
 )
@@ -104,8 +104,8 @@ func NewStore(db dbm.DB, os ...StoreOption) *Store {
 		keysByName:                 make(map[string]types.StoreKey),
 		pruneHeights:               make([]int64, 0),
 		versions:                   make([]int64, 0),
-		commitHeightFilterPipeline: defaultNoFilterF,
-		pruneHeightFilterPipeline:  defaultNoFilterF,
+		commitHeightFilterPipeline: defaultAcceptAll,
+		pruneHeightFilterPipeline:  defaultAcceptAll,
 	}
 
 	for _, opt := range os {
@@ -490,12 +490,9 @@ func (rs *Store) CommitterCommitMap(inputDeltaMap iavltree.TreeDeltaMap) (types.
 		}
 
 		// batch prune if the current height is a pruning interval height
-		if version%int64(10) == 0 {
+		if rs.pruningOpts.Interval > 0 && version%int64(rs.pruningOpts.Interval) == 0 {
 			rs.pruneStores()
 		}
-		//if rs.pruningOpts.Interval > 0 && version%int64(rs.pruningOpts.Interval) == 0 {
-		//	rs.pruneStores()
-		//}
 
 		rs.versions = append(rs.versions, version)
 	}
@@ -526,7 +523,7 @@ func (rs *Store) pruneStores() {
 	}()
 	stores := rs.getFilterStores(rs.lastCommitInfo.Version + 1)
 	//stores = rs.stores
-	logrusplugin.Info("pruning start", "pruning-count", pruneCnt, "curr-height", rs.lastCommitInfo.Version+1)
+	logrusplugin.Error("pruning start", "pruning-count", pruneCnt, "curr-height", rs.lastCommitInfo.Version+1)
 	for key, store := range stores {
 		if store.GetStoreType() == types.StoreTypeIAVL {
 			// If the store is wrapped with an inter-block cache, we must first unwrap

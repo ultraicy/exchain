@@ -3,7 +3,6 @@ package rootmulti
 import (
 	"github.com/okex/exchain/libs/cosmos-sdk/types"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
-	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 )
 
 func queryIbcProof(res *abci.ResponseQuery, info *commitInfo, storeName string) {
@@ -38,9 +37,6 @@ func (s *Store) getStores(h int64) map[types.StoreKey]types.CommitKVStore {
 }
 
 func (s *Store) getFilterStores(h int64) map[types.StoreKey]types.CommitKVStore {
-	if tmtypes.HigherThanIBCHeight(h) {
-		return s.stores
-	}
 	f := s.pruneHeightFilterPipeline(h)
 	// TODO FILTER:
 	m := make(map[types.StoreKey]types.CommitKVStore)
