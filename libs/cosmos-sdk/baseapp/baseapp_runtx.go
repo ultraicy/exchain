@@ -45,7 +45,7 @@ func (app *BaseApp) runtxWithInfo(info *runTxInfo, mode runTxMode, txBytes []byt
 	info.tx = tx
 	info.txBytes = txBytes
 	handler := info.handler
-	app.pin(ValTxMsgs, true, mode)
+	app.pinStart(ValTxMsgs, mode)
 
 	//init info context
 	err = handler.handleStartHeight(info, height)
@@ -84,28 +84,28 @@ func (app *BaseApp) runtxWithInfo(info *runTxInfo, mode runTxMode, txBytes []byt
 	defer handler.handleDeferGasConsumed(info)
 
 	defer func() {
-		app.pin(Refund, true, mode)
-		defer app.pin(Refund, false, mode)
+		app.pinStart(Refund, mode)
+		defer app.pinStop(Refund, mode)
 		handler.handleDeferRefund(info)
 	}()
 
 	if err := validateBasicTxMsgs(info.tx.GetMsgs()); err != nil {
 		return err
 	}
-	app.pin(ValTxMsgs, false, mode)
+	app.pinStop(ValTxMsgs, mode)
 
-	app.pin(RunAnte, true, mode)
+	app.pinStart(RunAnte, mode)
 	if app.anteHandler != nil {
 		err = app.runAnte(info, mode)
 		if err != nil {
 			return err
 		}
 	}
-	app.pin(RunAnte, false, mode)
+	app.pinStop(RunAnte, mode)
 
-	app.pin(RunMsg, true, mode)
+	app.pinStart(RunMsg, mode)
 	err = handler.handleRunMsg(info)
-	app.pin(RunMsg, false, mode)
+	app.pinStop(RunMsg, mode)
 	return err
 }
 
@@ -122,21 +122,21 @@ func (app *BaseApp) runAnte(info *runTxInfo, mode runTxMode) error {
 	// performance benefits, but it'll be more difficult to get right.
 
 	// 1. CacheTxContext
-	app.pin(CacheTxContext, true, mode)
+	app.pinStart(CacheTxContext, mode)
 	anteCtx, info.msCacheAnte = app.cacheTxContext(info.ctx, info.txBytes)
 	anteCtx = anteCtx.WithEventManager(sdk.NewEventManager())
-	app.pin(CacheTxContext, false, mode)
+	app.pinStop(CacheTxContext, mode)
 
 	// 2. AnteChain
-	app.pin(AnteChain, true, mode)
+	app.pinStart(AnteChain, mode)
 	if mode == runTxModeDeliver {
 		anteCtx = anteCtx.WithAnteTracer(app.anteTracer)
 	}
 	newCtx, err := app.anteHandler(anteCtx, info.tx, mode == runTxModeSimulate) // NewAnteHandler
-	app.pin(AnteChain, false, mode)
+	app.pinStop(AnteChain, mode)
 
 	// 3. AnteOther
-	app.pin(AnteOther, true, mode)
+	app.pinStart(AnteOther, mode)
 	ms := info.ctx.MultiStore()
 	info.accountNonce = newCtx.AccountNonce()
 
@@ -161,14 +161,14 @@ func (app *BaseApp) runAnte(info *runTxInfo, mode runTxMode) error {
 	if err != nil {
 		return err
 	}
-	app.pin(AnteOther, false, mode)
+	app.pinStop(AnteOther, mode)
 
 	// 4. CacheStoreWrite
 	if mode != runTxModeDeliverInAsync {
-		app.pin(CacheStoreWrite, true, mode)
+		app.pinStart(CacheStoreWrite, mode)
 		info.msCacheAnte.Write()
 		info.ctx.Cache().Write(true)
-		app.pin(CacheStoreWrite, false, mode)
+		app.pinStop(CacheStoreWrite, mode)
 	}
 
 	return nil
