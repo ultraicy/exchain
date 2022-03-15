@@ -323,3 +323,17 @@ func (c *Cache) logInfo(logger log.Logger, deleteMsg string) {
 	nowStats := fmt.Sprintf("len(acc):%d len(contracts):%d len(storage):%d", len(c.accMap), len(c.storageMap), c.storageSize())
 	logger.Info("MultiCache", "deleteMsg", deleteMsg, "nowStats", nowStats)
 }
+
+func (c *Cache) Print() {
+	fmt.Println("size::::", len(c.accMap), len(c.storageMap), len(c.codeMap))
+	//for acc, v := range c.accMap {
+	//	fmt.Println("acc", acc.String(), v.isDirty)
+	//}
+	//
+	//for acc, v := range c.storageMap {
+	//	fmt.Println("storage", acc.String(), v)
+	//}
+	//for acc, v := range c.codeMap {
+	//	fmt.Println("code", acc.String(), v.isDirty)
+	//}
+}

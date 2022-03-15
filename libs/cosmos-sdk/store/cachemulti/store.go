@@ -136,6 +136,14 @@ func (cms Store) Write() {
 	}
 }
 
+var (
+	whiteMap = map[string]bool{
+		"params": true,
+		"evm":    true,
+		"acc":    true,
+	}
+)
+
 func (cms Store) Display() (map[types.StoreKey]int, map[types.StoreKey]int) {
 	r := make(map[types.StoreKey]int, 0)
 	w := make(map[types.StoreKey]int, 0)
@@ -143,6 +151,9 @@ func (cms Store) Display() (map[types.StoreKey]int, map[types.StoreKey]int) {
 		rr, ww := store.Display()
 		r[key] = rr[types.NullStoreKey]
 		w[key] = ww[types.NullStoreKey]
+		if r[key] != 0 && !whiteMap[key.Name()] {
+			fmt.Println("fuck----", key.Name(), r[key], w[key])
+		}
 	}
 
 	return r, w

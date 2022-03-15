@@ -156,6 +156,7 @@ func (app *BaseApp) ParallelTxs(txs [][]byte) []*abci.ResponseDeliverTx {
 
 	app.parallelTxManage.isAsyncDeliverTx = true
 	app.parallelTxManage.cms = app.deliverState.ms.CacheMultiStore()
+	app.parallelTxManage.blockCache = sdk.NewCache(app.chainCache, true)
 
 	evmIndex := uint32(0)
 	for k := range txs {
@@ -231,11 +232,6 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 	deliverTxs := make([]*abci.ResponseDeliverTx, len(txs))
 
 	asyncCb := func(execRes *executeResult) {
-		//ts := time.Now()
-		//defer func() {
-		//	sdk.AddAsycn(time.Now().Sub(ts))
-		//}()
-
 		receiveTxIndex := int(execRes.GetCounter())
 		pm.workgroup.setTxStatus(receiveTxIndex, false)
 		if receiveTxIndex < txIndex {
@@ -263,6 +259,8 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 			txBytes := app.parallelTxManage.indexMapBytes[txIndex]
 			s := pm.txStatus[txBytes]
 			res := txReps[txIndex]
+
+			//res.cache.Print()
 
 			if res.Conflict(pm.cc) || overFlow(currentGas, res.resp.GasUsed, maxGas) {
 				if pm.workgroup.isRunning(txIndex) {
@@ -344,6 +342,7 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 		//waiting for call back
 		<-signal
 		app.fixFeeCollector(txs, pm.cms)
+		fmt.Println("ReadTs", pm.readCnt, pm.writeCnt)
 		receiptsLogs := app.endParallelTxs()
 		for index, v := range receiptsLogs {
 			if len(v) != 0 { // only update evm tx result
@@ -353,7 +352,7 @@ func (app *BaseApp) runTxs(txs [][]byte, groupList map[int][]int, nextTxInGroup 
 
 	}
 	pm.cms.Write()
-	//sdk.AddRunTx(time.Now().Sub(ts))
+
 	return deliverTxs
 }
 
@@ -379,7 +378,7 @@ func (app *BaseApp) deliverTxWithCache(txByte []byte, txIndex int) *executeResul
 
 	tx, err := app.txDecoder(getRealTxByte(txByte))
 	if err != nil {
-		asyncExe := newExecuteResult(sdkerrors.ResponseDeliverTx(err, 0, 0, app.trace), nil, txStatus.indexInBlock, txStatus.evmIndex)
+		asyncExe := newExecuteResult(sdkerrors.ResponseDeliverTx(err, 0, 0, app.trace), nil, txStatus.indexInBlock, txStatus.evmIndex, nil)
 		return asyncExe
 	}
 	var (
@@ -387,7 +386,8 @@ func (app *BaseApp) deliverTxWithCache(txByte []byte, txIndex int) *executeResul
 		mode runTxMode
 	)
 	mode = runTxModeDeliverInAsync
-	g, r, m, e := app.runTx(mode, txByte, tx, LatestSimulateTxHeight)
+	a, b := app.runtx(mode, txByte, tx, LatestSimulateTxHeight)
+	g, r, m, e := a.gInfo, a.result, a.msCacheAnte, b
 	if e != nil {
 		resp = sdkerrors.ResponseDeliverTx(e, g.GasWanted, g.GasUsed, app.trace)
 	} else {
@@ -400,7 +400,7 @@ func (app *BaseApp) deliverTxWithCache(txByte []byte, txIndex int) *executeResul
 		}
 	}
 
-	asyncExe := newExecuteResult(resp, m, txStatus.indexInBlock, txStatus.evmIndex)
+	asyncExe := newExecuteResult(resp, m, txStatus.indexInBlock, txStatus.evmIndex, a.ctx.Cache())
 	asyncExe.err = e
 	return asyncExe
 }
@@ -418,6 +418,8 @@ type executeResult struct {
 	evmCounter uint32
 	readList   map[string][]byte
 	writeList  map[string][]byte
+
+	cache *sdk.Cache
 }
 
 func (e executeResult) GetResponse() abci.ResponseDeliverTx {
@@ -458,7 +460,7 @@ func loadPreData(ms sdk.CacheMultiStore) (map[string][]byte, map[string][]byte) 
 	return rSet, wSet
 }
 
-func newExecuteResult(r abci.ResponseDeliverTx, ms sdk.CacheMultiStore, counter uint32, evmCounter uint32) *executeResult {
+func newExecuteResult(r abci.ResponseDeliverTx, ms sdk.CacheMultiStore, counter uint32, evmCounter uint32, cache *sdk.Cache) *executeResult {
 	rSet, wSet := loadPreData(ms)
 	return &executeResult{
 		resp:       r,
@@ -467,6 +469,7 @@ func newExecuteResult(r abci.ResponseDeliverTx, ms sdk.CacheMultiStore, counter 
 		evmCounter: evmCounter,
 		readList:   rSet,
 		writeList:  wSet,
+		cache:      cache,
 	}
 }
 
@@ -577,6 +580,10 @@ type parallelTxManager struct {
 	runBase         map[int]int
 	markFailedStats map[int]bool
 	commitDone      chan struct{}
+
+	blockCache *sdk.Cache
+	readCnt    int
+	writeCnt   int
 }
 
 type conflictCheck struct {
@@ -667,6 +674,9 @@ func (f *parallelTxManager) clear() {
 	f.workgroup.runningStatus = make(map[int]int)
 	f.workgroup.isrunning = make(map[int]bool)
 	f.workgroup.indexInAll = 0
+
+	f.readCnt = 0
+	f.writeCnt = 0
 }
 
 func (f *parallelTxManager) markFailed(txIndexAll int) {
@@ -743,7 +753,17 @@ func (f *parallelTxManager) SetCurrentIndex(d int, res *executeResult) {
 		chanStop <- struct{}{}
 	}()
 
+	fmt.Println("SetCurrent", d, f.getRunBase(d), len(f.txStatus))
 	f.mu.Lock()
+	r, w := res.ms.Display()
+	for _, v := range r {
+		f.readCnt += v
+
+	}
+
+	for _, v := range w {
+		f.writeCnt += v
+	}
 	res.ms.IteratorCache(func(key, value []byte, isDirty bool, isdelete bool, storeKey sdk.StoreKey) bool {
 		if isDirty {
 			if isdelete {
@@ -832,13 +852,4 @@ func (l *LogForParallel) Update(height uint64, txs int, reRunCnt int) {
 	if l.terribleBlock.better(info) {
 		l.terribleBlock = info
 	}
-}
-
-func (l *LogForParallel) PrintLog() {
-	fmt.Println("BlockNumbers", l.blockNumbers)
-	fmt.Println("AllTxs", l.sumTx)
-	fmt.Println("ReRunTxs", l.reRunTx)
-	fmt.Println("All Concurrency Rate", float64(l.reRunTx)/float64(l.sumTx))
-	fmt.Println("BestBlock", l.bestBlock.string(), "Concurrency Rate", 1-float64(l.bestBlock.reRunTxs)/float64(l.bestBlock.txs))
-	fmt.Println("TerribleBlock", l.terribleBlock.string(), "Concurrency Rate", 1-float64(l.terribleBlock.reRunTxs)/float64(l.terribleBlock.txs))
 }

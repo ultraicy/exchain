@@ -87,7 +87,7 @@ func (store *Store) Display() (map[types.StoreKey]int, map[types.StoreKey]int) {
 			fmt.Println("?????", hex.EncodeToString([]byte(k)), v.dirty, v.deleted, hex.EncodeToString(v.value))
 		}
 	}
-	return map[types.StoreKey]int{types.NullStoreKey: len(store.readList)}, map[types.StoreKey]int{types.NullStoreKey: len(store.readList)}
+	return map[types.StoreKey]int{types.NullStoreKey: len(store.readList)}, map[types.StoreKey]int{types.NullStoreKey: len(store.dirty)}
 }
 
 func (store *Store) IteratorCache(cb func(key, value []byte, isDirty bool, isDelete bool, sKey types.StoreKey) bool, sKey types.StoreKey) bool {

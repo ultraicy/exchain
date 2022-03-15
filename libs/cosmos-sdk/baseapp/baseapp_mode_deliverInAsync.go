@@ -19,7 +19,7 @@ func (m *modeHandlerDeliverInAsync) handleDeferRefund(info *runTxInfo) {
 	if err != nil {
 		panic(err)
 	}
-	info.msCache.Write()
+	info.writeCache()
 	app.parallelTxManage.setRefundFee(string(info.txBytes), refundGas)
 }
 
@@ -41,7 +41,7 @@ func (m *modeHandlerDeliverInAsync) handleRunMsg(info *runTxInfo) (err error) {
 	err = m.checkHigherThanMercury(err, info)
 
 	if info.msCache != nil {
-		info.msCache.Write()
+		info.writeCache()
 	}
 
 	return
